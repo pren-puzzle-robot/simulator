@@ -8,3 +8,8 @@ Annotate puzzle pieces
 ```python
 python .\annotate_piece_masks.py --indir ..\output\ --outdir ..\output\annotated
 ```
+
+Sample detect edges
+```python
+python detect_edges.py --glob "..\output\piece_*.png" --out ..\output\
+```
