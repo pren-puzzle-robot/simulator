@@ -1,5 +1,7 @@
 # simulator
 
+Achtung: Python 3.14 ist nicht Kompatibel mit OpenCV
+
 Setup:
 ```python
 pip install opencv-python numpy scipy matplotlib
