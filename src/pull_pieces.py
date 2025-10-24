@@ -107,6 +107,7 @@ def main():
     args = ap.parse_args()
 
     ensure_dir(args.outdir)
+
     img = cv.imread(args.image)
     if img is None:
         raise SystemExit(f"Could not read image: {args.image}")
