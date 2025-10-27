@@ -32,13 +32,13 @@ class Corner:
     @property
     def x(self) -> float:
         """get the x-coordinate of the corner"""
-        return self.x
+        return self._x
 
     @property
     def y(self) -> float:
         """get the y-coordinate of the corner"""
-        return self.y
+        return self._y
 
     def get_distance_between(self: Corner, other: Corner) -> float:
         """compute the distance between this corner and an other one"""
-        return ((self.x - other.x) ** 2 + (self.y - other.y) ** 2) ** 0.5
+        return ((self._x - other.x) ** 2 + (self._y - other.y) ** 2) ** 0.5

@@ -82,20 +82,87 @@ class Edge:
         """get the signature of the edge"""
         return self._signature
 
+    @property
+    def get_width(self) -> float:
+        """get the width of the edge"""
+        return self._start.get_distance_between(self._end)
+
+    @property
+    def get_segment_length(self) -> float:
+        """get the length of each segment in the signature"""
+        return self.get_width / float(len(self._signature) - 1)
+
+    def get_plotvalues(self) -> tuple[list[float], list[float]]:
+        """get x and y values for plotting the signature"""
+        x_values: list[float] = []
+        y_values: list[float] = []
+
+        width: float = self.get_segment_length
+
+        length: int = len(self._signature)
+        for i in range(length):
+            x_values.append(i * width)
+            y_values.append(self._signature[i])
+
+        return (x_values, y_values)
+
+    def get_integral(self) -> float:
+        """Compute the integral of the edge's signature as a float value."""
+        seg_length: float = self.get_segment_length
+
+        integral: float = sum([abs(value) * seg_length for value in self.get_signature])
+        return integral
+
+    def get_local_middle_most_extrema(self) -> tuple[int, tuple[float, float]]:
+        """Get the index and value of the middle left most local extrema (max or min) in the signature."""
+        length: int = len(self._signature)
+        mid_index: int = length // 2
+        index: int = mid_index
+        i: int = 0
+
+        x, y = self.get_plotvalues()
+
+        curr_extrema_index: int = index
+        curr_extrema_value: float = y[index]
+
+        index = index + i
+
+        # search for local extrama by flickering outward from the middle
+        while index >= 1 and index < length - 1:
+            # check if next value is at least 5% bigger or further to the left
+            if (
+                abs(y[index]) >= abs(curr_extrema_value)
+                and index < curr_extrema_index
+                or abs(y[index]) >= abs(curr_extrema_value) * 1.05
+            ):
+                curr_extrema_index = index
+                curr_extrema_value = y[index]
+
+            # index flickering
+            if i < 0:
+                i = -i + 1
+            else:
+                i = -i
+
+            # update index
+            index = mid_index + i
+
     def compute_similarity(self, other: Edge) -> float:
-        """compute similarity between this edge and another one based on their signatures"""
+        """Compute the similarity between this edge's signature and that of\n
+        another by returning the percentile amount to which the integrals\n
+        overlap and returning it as a `float` value between `0.0` and `1.0`."""
         if len(self.get_signature) != len(other.get_signature):
             raise ValueError(
                 "Signatures must be of the same length to compute similarity."
             )
 
+        mean_integral: float = (self_integral + other_integral) / 2.0
+
         # simple similarity measure: inverse of mean absolute difference
         diffs = [
-            abs(abs(a) - abs(b))
+            abs(a - b) * seg_length
             for a, b in zip(self.get_signature, other.get_signature)
         ]
-        mean_diff = sum(diffs) / len(diffs)
-
-        # similarity score between 0 and 1
+        mean_diff = sum(diffs) / mean_integral
         similarity = max(0.0, 1.0 - mean_diff)
         return similarity
