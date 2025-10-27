@@ -9,13 +9,12 @@ from __future__ import annotations
 
 __copyright__ = "Copyright (c) 2025 HSLU PREN Team 13, HS25. All rights reserved."
 
-
-from .edge import Edge
-from .corner import Corner
-
 from pathlib import Path
 
 import json
+
+from .edge import Edge
+from .corner import Corner
 
 
 class PuzzlePiece:
@@ -70,6 +69,16 @@ class PuzzlePiece:
             bottom=edges[cls.JSON_SIDE_NAMES[2]],
             left=edges[cls.JSON_SIDE_NAMES[3]],
         )
+
+    @property
+    def get_edges(self) -> dict[str, Edge]:
+        """Get all edges of the puzzle piece as a dictionary."""
+        return {
+            "Top": self._top,
+            "Right": self._right,
+            "Bottom": self._bottom,
+            "Left": self._left,
+        }
 
     def __str__(self) -> str:
         return (
