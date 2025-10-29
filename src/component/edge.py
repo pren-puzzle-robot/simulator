@@ -110,7 +110,7 @@ class Edge:
         """Compute the integral of the edge's signature as a float value."""
         seg_length: float = self.get_segment_length
 
-        integral: float = sum([abs(value) * seg_length for value in self.get_signature])
+        integral: float = sum(abs(value) * seg_length for value in self.get_signature)
         return integral
 
     def get_local_middle_most_extrema(self) -> tuple[int, tuple[float, float]]:
@@ -125,10 +125,13 @@ class Edge:
         curr_extrema_index: int = index
         curr_extrema_value: float = y[index]
 
+        left_bound: float = x[0]
+        right_bound: float = x[-1]
+
         index = index + i
 
         # search for local extrama by flickering outward from the middle
-        while index >= 1 and index < length - 1:
+        while 1 <= index < length - 1:
             # check if next value is at least 5% bigger or further to the left
             if (
                 abs(y[index]) >= abs(curr_extrema_value)
@@ -147,6 +150,15 @@ class Edge:
             # update index
             index = mid_index + i
 
+            # exit loop if the found extrema is larger than the distance to the edge
+            if (
+                left_bound + abs(curr_extrema_value) <= x[index]
+                or right_bound - abs(curr_extrema_value) >= x[index]
+            ):
+                break
+
+        return (curr_extrema_index, (x[curr_extrema_index], curr_extrema_value))
+
     def compute_similarity(self, other: Edge) -> float:
         """Compute the similarity between this edge's signature and that of\n
         another by returning the percentile amount to which the integrals\n
@@ -156,13 +168,16 @@ class Edge:
                 "Signatures must be of the same length to compute similarity."
             )
 
-        mean_integral: float = (self_integral + other_integral) / 2.0
+        mean_integral: float = (self.get_integral() + other.get_integral()) / 2.0
+        mean_seg_length: float = (
+            self.get_segment_length + other.get_segment_length
+        ) / 2.0
 
         # simple similarity measure: inverse of mean absolute difference
-        diffs = [
-            abs(a - b) * seg_length
+        sum_diffs = sum(
+            abs(a - b) * mean_seg_length
             for a, b in zip(self.get_signature, other.get_signature)
-        ]
-        mean_diff = sum(diffs) / mean_integral
+        )
+        mean_diff = sum_diffs / mean_integral
         similarity = max(0.0, 1.0 - mean_diff)
         return similarity

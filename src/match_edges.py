@@ -2,7 +2,6 @@
 
 from pathlib import Path
 import matplotlib.pyplot as plt
-import numpy as np
 
 from component import PuzzlePiece, Edge
 
@@ -53,11 +52,12 @@ def main():
 
     print(value)
 
-    
     x1, y1 = Edge1.get_plotvalues()
 
     y2 = Edge2.get_signature
     # y3 = [25, 20, 15, 10, 5, 0]
+
+    print(Edge1.get_local_middle_most_extrema())
 
     # Plot erstellen
     plt.figure(figsize=(8, 5))  # Größe des Plots (optional)
