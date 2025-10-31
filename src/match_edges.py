@@ -54,12 +54,32 @@ def main():
 
     x1, y1 = Edge1.get_plotvalues()
 
-    y2 = Edge2.get_signature
+    x2, y2 = Edge2.get_plotvalues()
     # y3 = [25, 20, 15, 10, 5, 0]
 
     print(Edge1.get_local_middle_most_extrema())
+    print(Edge2.get_local_middle_most_extrema())
 
-    # Plot erstellen
+    plt.figure(figsize=(8, 5))
+    plt.plot(x1, y1, label="Edge 1 Base", linewidth=2, alpha=0.5)
+    plt.plot(x2, y2, label="Edge 2 Base", linewidth=2, alpha=0.5)
+
+    index_offset, value_offset = Edge1._get_off_set_between_signatures(Edge2)
+
+    plt.plot(
+        [a + value_offset[0] for a in x1[0 : -(index_offset + 1)]],
+        [b + value_offset[1] for b in y1[0 : -(index_offset + 1)]],
+        label="Edge 1 Alter",
+        linewidth=2,
+    )
+    plt.plot(
+        x2[index_offset:-1],
+        y2[index_offset:-1],
+        label="Edge 2 Alter",
+        linewidth=2,
+    )
+
+    """# Plot erstellen
     plt.figure(figsize=(8, 5))  # Größe des Plots (optional)
 
     # Mehrere Linien plotten
@@ -72,7 +92,7 @@ def main():
             for name in names:
                 temp_edge: Edge = temp_piece.get_edges[name]
                 temp_x, temp_y = temp_edge.get_plotvalues()
-                plt.plot(temp_x, temp_y, label=f"Piece {i} - {name}", alpha=0.5)
+                plt.plot(temp_x, temp_y, label=f"Piece {i} - {name}", alpha=0.5)"""
 
     # Achsenbeschriftungen und Titel
     plt.xlabel("x-Werte")

@@ -1,0 +1,7 @@
+{
+  "editor.formatOnPaste": true,
+  "editor.formatOnSave": true,
+  "pylint.enabled": true,
+  "py"
+  "eslint.workingDirectories:": ["./src", "./src/component"]
+}
