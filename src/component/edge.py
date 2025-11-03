@@ -12,11 +12,13 @@ __copyright__ = "Copyright (c) 2025 HSLU PREN Team 13, HS25. All rights reserved
 
 from enum import Enum
 
+from numpy import interp, asarray
+
 from .corner import Corner
 
 
 class EdgeDir(Enum):
-    """state of information we have about an edge"""
+    """The direction said edge is facing on the picture."""
 
     TOP = 0
     RIGHT = 1
@@ -35,25 +37,51 @@ class EdgeDir(Enum):
         raise ValueError(f"Unknown EdgeDir label: {label}")
 
 
+class EdgeCat(Enum):
+    """A broad categorisation between flat edges at the\n
+    exterior of the puzzle and edges that need to fit together."""
+
+    HOLE = 0
+    FLAT = 1
+
+    @staticmethod
+    def from_str(label: str) -> EdgeCat:
+        """convert a string to an EdgeType"""
+        label = label.upper()
+        value: EdgeCat = EdgeCat[label]  # type: ignore
+
+        if value.name in EdgeCat.__members__:
+            return value
+
+        raise ValueError(f"Unknown EdgeDir label: {label}")
+
+
 class Edge:
     """Edge on a PuzzlePiece"""
 
     _start: Corner  # starting corner
     _end: Corner  # end corner
     _direction: EdgeDir  # direction to which the edge is facing
+    _cat: EdgeCat  # type of the edge
     _signature: list[float]  # signature of the edge
 
     def __init__(
-        self, start: Corner, end: Corner, direction: str, signature: list[float]
+        self,
+        start: Corner,
+        end: Corner,
+        direction: str,
+        cat: str,
+        signature: list[float],
     ) -> None:
         self._start = start
         self._end = end
         self._direction = EdgeDir.from_str(direction)
+        self._cat = EdgeCat.from_str(cat)
         self._signature = signature
 
     def __str__(self) -> str:
         return (
-            f" {str(self._direction.name)} Edge:"
+            f" {str(self._direction.name)} {str(self._cat)} Edge:"
             f"({str(self._start)},{str(self._end)} \n {self._signature}"
         )
 
@@ -64,18 +92,24 @@ class Edge:
         return (
             self.get_corners == value.get_corners
             and self.get_direction == value.get_direction
+            and self.get_cat == value.get_cat
             and self.get_signature == value.get_signature
         )
 
     @property
     def get_corners(self) -> tuple[Corner, Corner]:
-        """get both of the ``RealNode``'s that are connected to the edge"""
+        """get both of the `Corner`'s that are connected to the edge"""
         return (self._start, self._end)
 
     @property
     def get_direction(self) -> str:
-        """get a ``String`` representing the direction the edge is facing"""
+        """get a `String` representing the direction the edge is facing"""
         return self._direction.name
+
+    @property
+    def get_cat(self) -> str:
+        """get a `String` representing the type of the edge"""
+        return self._cat.name
 
     @property
     def get_signature(self) -> list[float]:
@@ -113,24 +147,21 @@ class Edge:
         integral: float = sum(abs(value) * seg_length for value in self.get_signature)
         return integral
 
-    def _get_off_set_between_signatures(
-        self, other: Edge
-    ) -> tuple[int, tuple[float, float]]:
+    def _get_off_set_between_signatures(self, other: Edge) -> tuple[float, float]:
         """Get the offset (index difference) between the middle left most\n
         local extrema (max or min) in the signatures of this edge and\n
         another edge."""
-        self_index, self_value = self.get_local_middle_most_extrema()
-        other_index, other_value = other.get_local_middle_most_extrema()
+        self_value = self.get_local_middle_most_extrema()
+        other_value = other.get_local_middle_most_extrema()
 
-        index_offset: int = other_index - self_index
         value_offset: tuple[float, float] = (
             other_value[0] - self_value[0],
             other_value[1] - self_value[1],
         )
 
-        return (index_offset, value_offset)
+        return value_offset
 
-    def get_local_middle_most_extrema(self) -> tuple[int, tuple[float, float]]:
+    def get_local_middle_most_extrema(self) -> tuple[float, float]:
         """Get the index and value of the middle left most local extrema (max or min) in the signature."""
         length: int = len(self._signature)
         mid_index: int = length // 2
@@ -174,7 +205,9 @@ class Edge:
             ) ** 2 <= x[index]:
                 break
 
-        return (curr_extrema_index, (x[curr_extrema_index], curr_extrema_value))
+        return_value: tuple[float, float] = (x[curr_extrema_index], curr_extrema_value)
+
+        return return_value
 
     def compute_similarity(self, other: Edge) -> float:
         """Compute the similarity between this edge's signature and that of\n
@@ -185,11 +218,7 @@ class Edge:
                 "Signatures must be of the same length to compute similarity."
             )
 
-        index_offset, value_offset = self._get_off_set_between_signatures(other)
-        n: int = len(self.get_signature) - index_offset
-
-        print("index_offset", index_offset)
-        print("value_offset", value_offset)
+        value_offset = self._get_off_set_between_signatures(other)
 
         mean_integral: float = (self.get_integral() + other.get_integral()) / 2.0
         mean_seg_length: float = (
@@ -200,8 +229,8 @@ class Edge:
         diffs = [
             abs(a - b + value_offset[1]) * mean_seg_length
             for a, b in zip(
-                self.get_signature[index_offset : n - 1],
-                other.get_signature[0 : n - index_offset - 1],
+                self.get_signature[0:-1],
+                other.get_signature[0:-1],
             )
         ]
         print(diffs)
@@ -209,3 +238,49 @@ class Edge:
         mean_diff = sum_diffs / mean_integral
         similarity = max(0.0, 1.0 - mean_diff)
         return similarity
+
+    def compute_difference(self, other: Edge) -> float:
+        """Compute the difference between this edge's signature and that of\n
+        another by returning the percentile amount to which the integrals\n
+        differ and returning it as a `float` value between `0.0` and `1.0`."""
+
+        x, y_values = self._compute_matching_plots(other)
+        y_s, y_o = y_values
+
+        seg_length: float = abs(x[0] - x[-1]) / float(len(x))
+
+        sum_diffs_var1: float = 0.0
+        sum_diffs_var2: float = 0.0
+
+        for y1, y2 in zip(y_s, y_o):
+            sum_diffs_var1 += abs(min(0.0, (y1 - y2))) * seg_length
+            sum_diffs_var2 += abs(min(0.0, (y2 - y1))) * seg_length
+
+        return min(sum_diffs_var1, sum_diffs_var2)
+
+    def _compute_matching_plots(
+        self, other: Edge
+    ) -> tuple[list[float], tuple[list[float], list[float]]]:
+        """Compute the matching plot values between this edge's signature and that of\n
+        another edge, adjusted for offset."""
+        value_offset = self._get_off_set_between_signatures(other)
+
+        x_s, y_s = self.get_plotvalues()
+        x_o, y_o = other.get_plotvalues()
+
+        adjusted_x_s = [a + value_offset[0] for a in x_s]
+        adjusted_y_s = [b + value_offset[1] for b in y_s]
+
+        min_x_value: float = max(adjusted_x_s[0], x_o[0])
+        max_x_value: float = min(adjusted_x_s[-1], x_o[-1])
+
+        start_idx = next(i for i, v in enumerate(adjusted_x_s) if v >= min_x_value)
+        end_idx = next(i for i, v in enumerate(adjusted_x_s) if v >= max_x_value)
+
+        intersect_x = adjusted_x_s[start_idx:end_idx]
+
+        intersect_y_s = adjusted_y_s[start_idx:end_idx]
+
+        intersect_y_o = asarray(interp(intersect_x, x_o, y_o), dtype=float).tolist()
+
+        return (intersect_x, (intersect_y_s, intersect_y_o))

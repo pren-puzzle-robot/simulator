@@ -7,7 +7,7 @@ easier to access. Adapt at your own leisure.\n
 
 from __future__ import annotations
 
-__copyright__ = "Copyright (c) 2025 HSLU PREN Team 13, HS25. All rights reserved."
+__copyright__ = "Copyright (c) 2025 HSLU PREN 1 Team 13, HS25. All rights reserved."
 
 from pathlib import Path
 
@@ -23,6 +23,7 @@ class PuzzlePiece:
 
     JSON_EDGEDIR_NAME: str = "sides"
     JSON_SIDE_NAMES: list[str] = ["Top", "Right", "Bottom", "Left"]
+    JSON_CLASS_NAME: str = "class"
     JSON_CORNER_NAME: str = "segment"
     JSON_ELEVATION_NAME: str = "signature"
 
@@ -52,6 +53,7 @@ class PuzzlePiece:
         for side in cls.JSON_SIDE_NAMES:
             signature_values: list[float] = edge_data[side][cls.JSON_ELEVATION_NAME]
             corner_values = edge_data[side][cls.JSON_CORNER_NAME]
+            edge_class: str = edge_data[side][cls.JSON_CLASS_NAME]
 
             x1, y1 = corner_values[0]
             start = Corner(x=x1, y=y1)
@@ -60,7 +62,11 @@ class PuzzlePiece:
             end = Corner(x=x2, y=y2)
 
             edges[side] = Edge(
-                start=start, end=end, direction=side, signature=signature_values
+                start=start,
+                end=end,
+                direction=side,
+                cat=edge_class,
+                signature=signature_values,
             )
 
         return cls(
