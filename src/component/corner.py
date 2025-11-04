@@ -29,6 +29,9 @@ class Corner:
 
         return self.x == value.x and self.y == value.y
 
+    def __hash__(self) -> int:
+        return hash((self._x, self._y))
+
     @property
     def x(self) -> float:
         """get the x-coordinate of the corner"""

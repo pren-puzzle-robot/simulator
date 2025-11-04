@@ -59,6 +59,7 @@ class EdgeCat(Enum):
 class Edge:
     """Edge on a PuzzlePiece"""
 
+    _piece: int  # index of the puzzle piece this edge belongs to
     _start: Corner  # starting corner
     _end: Corner  # end corner
     _direction: EdgeDir  # direction to which the edge is facing
@@ -67,12 +68,14 @@ class Edge:
 
     def __init__(
         self,
+        piece: int,
         start: Corner,
         end: Corner,
         direction: str,
         cat: str,
         signature: list[float],
     ) -> None:
+        self._piece = piece
         self._start = start
         self._end = end
         self._direction = EdgeDir.from_str(direction)
@@ -90,11 +93,28 @@ class Edge:
             return False
 
         return (
-            self.get_corners == value.get_corners
+            self.get_piece == value.get_piece
+            and self.get_corners == value.get_corners
             and self.get_direction == value.get_direction
             and self.get_cat == value.get_cat
             and self.get_signature == value.get_signature
         )
+
+    def __hash__(self) -> int:
+        return hash(
+            (
+                self.get_piece,
+                self.get_corners,
+                self.get_direction,
+                self.get_cat,
+                tuple(self.get_signature),
+            )
+        )
+
+    @property
+    def get_piece(self) -> int:
+        """get the index of the puzzle piece this edge belongs to"""
+        return self._piece
 
     @property
     def get_corners(self) -> tuple[Corner, Corner]:
@@ -125,6 +145,12 @@ class Edge:
     def get_segment_length(self) -> float:
         """get the length of each segment in the signature"""
         return self.get_width / float(len(self._signature) - 1)
+
+    @property
+    def get_height(self) -> float:
+        """get the difference between the highest and lowest\n
+        point in the signature of this edge"""
+        return abs(max(self._signature) - min(self._signature))
 
     def get_plotvalues(self) -> tuple[list[float], list[float]]:
         """get x and y values for plotting the signature"""
@@ -221,22 +247,17 @@ class Edge:
         value_offset = self._get_off_set_between_signatures(other)
 
         mean_integral: float = (self.get_integral() + other.get_integral()) / 2.0
-        mean_seg_length: float = (
-            self.get_segment_length + other.get_segment_length
-        ) / 2.0
+        mean_width: float = (self.get_width + other.get_width) / 2.0
+        mean_height: float = (self.get_height + other.get_height) / 2.0
 
-        # simple similarity measure: inverse of mean absolute difference
-        diffs = [
-            abs(a - b + value_offset[1]) * mean_seg_length
-            for a, b in zip(
-                self.get_signature[0:-1],
-                other.get_signature[0:-1],
-            )
-        ]
-        print(diffs)
-        sum_diffs = sum(diffs)
-        mean_diff = sum_diffs / mean_integral
-        similarity = max(0.0, 1.0 - mean_diff)
+        diff_integral: float = self.compute_difference(other)
+
+        fac_integral: float = 1.0 - diff_integral / mean_integral
+        fac_width: float = 1.0 - abs(value_offset[0]) / mean_width
+        fac_height: float = 1.0 - abs(value_offset[1]) / mean_height
+
+        similarity = fac_integral * fac_width * fac_height
+
         return similarity
 
     def compute_difference(self, other: Edge) -> float:

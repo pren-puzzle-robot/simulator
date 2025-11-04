@@ -1,125 +1,143 @@
 """Code-File providing the matching of puzzle edges."""
 
+import os
+
 from pathlib import Path
 import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
 
 from component import PuzzlePiece, Edge
 
+DIRECTIONS = ["Top", "Right", "Bottom", "Left"]
+COLOURS = ["blue", "orange", "green", "red"]
+FILENAME = os.path.basename(__file__)
+LIVE_DEMO = False  # set to True to show plots interactively
+
+PUZZLE: dict[int, PuzzlePiece] = {}
+
 
 def main():
-    """ap = argparse.ArgumentParser()
-    ap.add_argument(
-        "--glob", default="piece_*_edges.json", help="file glob for numeric edges"
-    )
-    ap.add_argument("--out", default="out", help="output folder")
-    args = ap.parse_args()
+    """main function to match edges and create plots"""
 
-    files = sorted(glob.glob(args.glob))
-    if not files:
-        print('No files matched. Example: --glob "piece_*_edges.json"')
-        return
+    _setup_puzzle_data()
 
-    with open("piece_1_edges.json", "r", encoding="utf-8") as file:
-        numeric_data = json.load(file)
+    n: int = PUZZLE.__len__()
 
-    signatureTop: List[float] = numeric_data["sides"]["Top"]["signature"]
-    signatureLeft: List[float] = numeric_data["sides"]["Left"]["signature"]
+    for i in range(1, n + 1):
+        _compute_plots_per_piece(i)
 
-    print("signatureTop", len(signatureTop))
-    print("signatureLeft", len(signatureLeft))"""
 
-    path = Path(__file__).parent.parent / "output" / "piece_1_edges.json"
-    path.resolve()
-    # print(path)
-
-    piece1 = PuzzlePiece.from_json(path)
-    # print(piece1)
-
-    pieces: dict[int, PuzzlePiece] = {}
+def _compute_ranking_per_edge(base: Edge, piece: int) -> dict[Edge, float]:
+    edges: dict[Edge, float] = {}
 
     for i in range(1, 5):
-        path = Path(__file__).parent.parent / "output" / f"piece_{i}_edges.json"
-        piece = PuzzlePiece.from_json(path)
-        pieces[i] = piece
-
-    value: float = float("inf")
-    names: list[str] = ["Top", "Right", "Bottom", "Left"]
-
-    Edge1: Edge = pieces[1].get_edges["Top"]
-    Edge2: Edge = pieces[3].get_edges["Left"]
-
-    # value = Edge1.compute_similarity(Edge2)
-
-    valuez = Edge1.compute_difference(Edge2)
-
-    # print(value)
-    print(valuez)
-
-    x1, y1 = Edge1.get_plotvalues()
-
-    x2, y2 = Edge2.get_plotvalues()
-    # y3 = [25, 20, 15, 10, 5, 0]
-
-    # print(Edge1.get_local_middle_most_extrema())
-    # print(Edge2.get_local_middle_most_extrema())
-
-    """plt.figure(figsize=(8, 5))
-    plt.plot(x1, y1, label="Edge 1 Base", linewidth=2, alpha=0.5)
-    plt.plot(x2, y2, label="Edge 2 Base", linewidth=2, alpha=0.5)
-
-    value_offset = Edge1._get_off_set_between_signatures(Edge2)
-
-    plt.plot(
-        [a + value_offset[0] for a in x1],
-        [b + value_offset[1] for b in y1],
-        label="Edge 1 Alter",
-        linewidth=2,
-    )
-    plt.plot(
-        x2[0:-1],
-        y2[0:-1],
-        label="Edge 2 Alter",
-        linewidth=2,
-    )
-
-    """
-    # Plot erstellen
-    plt.figure(figsize=(8, 5))  # Größe des Plots (optional)
-
-    # Mehrere Linien plotten
-    plt.plot(x1, y1, label="Base", linewidth=2)
-    # plt.plot(x, y3, label="Abnehmend", linestyle=":")
-
-    for i in range(1, 5):
-        if i != 1:
-            temp_piece: PuzzlePiece = pieces[i]
-            for name in names:
+        if i != piece:
+            temp_piece: PuzzlePiece = PUZZLE[i]
+            for name in DIRECTIONS:
                 temp_edge: Edge = temp_piece.get_edges[name]
-                temp_x, temp_y_values = Edge1._compute_matching_plots(temp_edge)
-                temp_value: float = Edge1.compute_difference(temp_edge)
-                plt.plot(
-                    temp_x,
-                    temp_y_values[1],
-                    label=f"Piece {i} - {name} - {temp_edge.get_cat} - {temp_value}",
-                    alpha=0.5,
-                )
+                temp_value: float = base.compute_similarity(temp_edge)
+                edges[temp_edge] = temp_value
 
-    # Achsenbeschriftungen und Titel
-    plt.xlabel("x-Werte")
-    plt.ylabel("y-Werte")
-    plt.title("Mehrere Datenreihen in einem Plot")
+    sorted_edges = dict(sorted(edges.items(), key=lambda item: item[1], reverse=True))
 
-    # Legende aktivieren
-    plt.legend()
+    return sorted_edges
 
-    # Gitter aktivieren (optional)
-    plt.grid(True)
 
-    # Plot als PNG speichern
-    plt.savefig("mehrere_datenreihen.png", dpi=300, bbox_inches="tight")
+def _compute_plots_per_piece(piece_id: int) -> None:
+    fig, axes = plt.subplots(2, 2, figsize=(16, 9), dpi=100)
 
-    # Optional: Plot anzeigen
-    plt.show()
+    n: int = PUZZLE.__len__()
+
+    manager = plt.get_current_fig_manager()
+    manager.set_window_title(f"{FILENAME} - output- ({piece_id}/{n})")
+
+    fig.suptitle(f"Ergebnis der Kantenvergleiche - Puzzleteil {piece_id}", fontsize=16)
+
+    piece: PuzzlePiece = PUZZLE[piece_id]
+
+    for i in range(2):
+        for j in range(2):
+            temp_dir = DIRECTIONS[_combine_bits(i, j)]
+            temp_colour = COLOURS[_combine_bits(i, j)]
+            temp_subplot: Axes = axes[i, j]
+            temp_edge: Edge = piece.get_edges[temp_dir]
+            temp_ranking: dict[Edge, float] = _compute_ranking_per_edge(
+                temp_edge, piece_id
+            )
+            _draw_subplots(temp_subplot, temp_edge, temp_colour, temp_ranking)
+
+    plt.tight_layout()
+
+    if LIVE_DEMO:
+        plt.show()
+
+    plt.savefig(f"../output/piece_{piece_id}_matching.png")
+
+
+def _draw_subplots(
+    subplot: Axes, base: Edge, colour: str, others: dict[Edge, float]
+) -> None:
+    x_base, y_base = base.get_plotvalues()
+    subplot.plot(
+        x_base,
+        y_base,
+        color="black",
+        label="Original",
+        linewidth=2,
+    )
+
+    score: float = 0.0
+    score_set: bool = False
+
+    for edge, value in others.items():
+        if not score_set:
+            score = value
+            score_set = True
+
+        if value + 0.1 >= score:
+            color = colour
+            linewidth = 2
+        else:
+            color = "gray"
+            linewidth = 1
+
+        x, y = edge.get_plotvalues()
+
+        subplot.plot(
+            x,
+            y,
+            color=color,
+            label=f"Piece {edge.get_piece} - {edge.get_direction[0]} - {(value * 100):.2f}%",
+            alpha=value,
+            linewidth=linewidth,
+        )
+
+    subplot.set_title(f"Kante - {base.get_direction.capitalize()}")
+    subplot.set_xlabel("Kantenlänge [px.]")
+    subplot.set_ylabel("d/dx des Höhenprofils [f'(px.)]")
+    subplot.legend()
+    subplot.grid(True)
+
+
+def _setup_puzzle_data() -> None:
+    """Setup the needed information about the puzzle by\n
+    scanning the json files and creating a `dict` with\n
+    `PuzzlePieces` as elements to access their data more\n
+    easily."""
+    i: int = 1
+    path: Path = Path(__file__).parent.parent / "output" / f"piece_{i}_edges.json"
+    path.resolve()
+
+    while path.exists():
+        piece = PuzzlePiece.from_json(path)
+        PUZZLE[i] = piece
+
+        i += 1
+        path = Path(__file__).parent.parent / "output" / f"piece_{i}_edges.json"
+
+
+def _combine_bits(a: int, b: int) -> int:
+    return (a << 1) | b
 
 
 if __name__ == "__main__":
