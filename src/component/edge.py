@@ -173,28 +173,36 @@ class Edge:
         integral: float = sum(abs(value) * seg_length for value in self.get_signature)
         return integral
 
-    def _get_off_set_between_signatures(self, other: Edge) -> tuple[float, float]:
+    @staticmethod
+    def _get_off_set_between_signatures(
+        this: tuple[list[float], list[float]], other: tuple[list[float], list[float]]
+    ) -> tuple[float, float]:
         """Get the offset (index difference) between the middle left most\n
         local extrema (max or min) in the signatures of this edge and\n
         another edge."""
-        self_value = self.get_local_middle_most_extrema()
-        other_value = other.get_local_middle_most_extrema()
+        this_value = Edge.get_local_middle_most_extrema(this[0], this[1])
+        other_value = Edge.get_local_middle_most_extrema(other[0], other[1])
 
         value_offset: tuple[float, float] = (
-            other_value[0] - self_value[0],
-            other_value[1] - self_value[1],
+            other_value[0] - this_value[0],
+            other_value[1] - this_value[1],
         )
 
         return value_offset
 
-    def get_local_middle_most_extrema(self) -> tuple[float, float]:
-        """Get the index and value of the middle left most local extrema (max or min) in the signature."""
-        length: int = len(self._signature)
+    @staticmethod
+    def get_local_middle_most_extrema(
+        x: list[float], y: list[float]
+    ) -> tuple[float, float]:
+        """Get the index and value of the middle left most local extrema\n
+        (max or min) in the signature."""
+        if len(x) != len(y):
+            raise ValueError("X and Y values must be of the same length.")
+
+        length: int = len(x)
         mid_index: int = length // 2
         index: int = mid_index
         i: int = 0
-
-        x, y = self.get_plotvalues()
 
         curr_extrema_index: int = index
         curr_extrema_value: float = y[index]
@@ -243,14 +251,26 @@ class Edge:
             raise ValueError(
                 "Signatures must be of the same length to compute similarity."
             )
-
-        value_offset = self._get_off_set_between_signatures(other)
-
+        
         mean_integral: float = (self.get_integral() + other.get_integral()) / 2.0
         mean_width: float = (self.get_width + other.get_width) / 2.0
         mean_height: float = (self.get_height + other.get_height) / 2.0
 
-        diff_integral: float = self.compute_difference(other)
+        x_s, y_s = self.get_plotvalues()
+        x_o, y_o = other.get_plotvalues()
+
+        value_offset_normal = Edge._get_off_set_between_signatures((x_s, y_s), (x_o, y_o))
+        diff_integral_normal: float = Edge.compute_difference(x_s, y_s, x_o, y_o)
+
+        value_offset_invert = Edge._get_off_set_between_signatures((x_s, y_s), (x_o, y_o[::-1]))
+        diff_integral_invert: float = Edge.compute_difference(x_s, y_s, x_o, y_o[::-1])
+
+        if diff_integral_normal < diff_integral_invert:
+            value_offset = value_offset_normal
+        else:
+            value_offset = value_offset_invert
+
+        diff_integral = min(diff_integral_normal, diff_integral_invert)
 
         fac_integral: float = 1.0 - diff_integral / mean_integral
         fac_width: float = 1.0 - abs(value_offset[0]) / mean_width
@@ -260,34 +280,34 @@ class Edge:
 
         return similarity
 
-    def compute_difference(self, other: Edge) -> float:
+    @staticmethod
+    def compute_difference(
+        x_s: list[float], y_s: list[float], x_o: list[float], y_o: list[float]
+    ) -> float:
         """Compute the difference between this edge's signature and that of\n
         another by returning the percentile amount to which the integrals\n
         differ and returning it as a `float` value between `0.0` and `1.0`."""
 
-        x, y_values = self._compute_matching_plots(other)
-        y_s, y_o = y_values
+        x, y_values = Edge._compute_matching_plots(x_s, y_s, x_o, y_o)
 
         seg_length: float = abs(x[0] - x[-1]) / float(len(x))
 
         sum_diffs_var1: float = 0.0
         sum_diffs_var2: float = 0.0
 
-        for y1, y2 in zip(y_s, y_o):
+        for y1, y2 in y_values:
             sum_diffs_var1 += abs(min(0.0, (y1 - y2))) * seg_length
             sum_diffs_var2 += abs(min(0.0, (y2 - y1))) * seg_length
 
         return min(sum_diffs_var1, sum_diffs_var2)
 
+    @staticmethod
     def _compute_matching_plots(
-        self, other: Edge
-    ) -> tuple[list[float], tuple[list[float], list[float]]]:
+        x_s: list[float], y_s: list[float], x_o: list[float], y_o: list[float]
+    ) -> tuple[list[float], list[tuple[float, float]]]:
         """Compute the matching plot values between this edge's signature and that of\n
         another edge, adjusted for offset."""
-        value_offset = self._get_off_set_between_signatures(other)
-
-        x_s, y_s = self.get_plotvalues()
-        x_o, y_o = other.get_plotvalues()
+        value_offset = Edge._get_off_set_between_signatures((x_s, y_s), (x_o, y_o))
 
         adjusted_x_s = [a + value_offset[0] for a in x_s]
         adjusted_y_s = [b + value_offset[1] for b in y_s]
@@ -300,8 +320,10 @@ class Edge:
 
         intersect_x = adjusted_x_s[start_idx:end_idx]
 
-        intersect_y_s = adjusted_y_s[start_idx:end_idx]
+        intersect_y_s: list[float] = adjusted_y_s[start_idx:end_idx]
+        intersect_y_o: list[float] = asarray(
+            interp(intersect_x, x_o, y_o), dtype=float
+        ).tolist()
+        intersect_y = list(zip(intersect_y_s, intersect_y_o))
 
-        intersect_y_o = asarray(interp(intersect_x, x_o, y_o), dtype=float).tolist()
-
-        return (intersect_x, (intersect_y_s, intersect_y_o))
+        return (intersect_x, intersect_y)
