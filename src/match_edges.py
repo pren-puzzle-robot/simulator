@@ -36,9 +36,55 @@ def main():
     x_other, y_other = other.get_plotvalues()
 
     plt.figure(figsize=(8, 6), dpi=100)
-    plt.plot(x_base, y_base, color="blue", label="Piece 1 - Top - original", linewidth=2)
-    plt.plot(x_other, y_other, color="orange", label="Piece 3 - Top - original", linewidth=2)
+    plt.plot(
+        x_base,
+        y_base,
+        color="blue",
+        label="Piece 1 - Top - original",
+        linewidth=2,
+        alpha=0.5,
+    )
+    plt.plot(
+        x_other,
+        y_other,
+        color="orange",
+        label="Piece 3 - Top - original",
+        linewidth=2,
+        alpha=0.5,
+    )
 
+    x_b_ex, y_b_ex = Edge.get_local_middle_most_extrema(x_base, y_base)
+    x_o_ex, y_o_ex = Edge.get_local_middle_most_extrema(x_other, y_other)
+
+    plt.plot(
+        [x_b_ex, x_o_ex],
+        [y_b_ex, y_o_ex],
+        color="red",
+        linestyle="--",
+        label="Extrema Abweichung",
+    )
+
+    x_other_adapted = list(a + abs(x_b_ex - x_o_ex) for a in x_other)
+    y_other_adapted = list(b - abs(y_b_ex - y_o_ex) for b in y_other)
+
+    x_final, y_values_final = Edge._compute_matching_plots(
+        x_base, y_base, x_other_adapted, y_other_adapted
+    )
+
+    plt.plot(
+        x_final,
+        list(a for (a, b) in y_values_final),
+        color="blue",
+        label="Piece 1 - Top - ajusted",
+        linewidth=2,
+    )
+    plt.plot(
+        x_final,
+        list(b for (a, b) in y_values_final),
+        color="orange",
+        label="Piece 3 - Top - ajusted",
+        linewidth=2,
+    )
 
     plt.title("Kantenvergleich im Detail")
     plt.xlabel("Kantenlänge [px.]")
@@ -47,7 +93,7 @@ def main():
     plt.grid(True)
 
     plt.tight_layout()
-    plt.show()
+    # plt.show()
     plt.savefig("../output/demo_detail_matching.png")
 
 
@@ -118,7 +164,7 @@ def _draw_subplots(
             score = value
             score_set = True
 
-        if value + 0.1 >= score:
+        if value * 1.05 >= score:
             color = colour
             linewidth = 2
         else:
@@ -132,7 +178,7 @@ def _draw_subplots(
             y,
             color=color,
             label=f"Piece {edge.get_piece} - {edge.get_direction[0]} - {(value * 100):.2f}%",
-            alpha=value,
+            alpha=max(0.0, value),
             linewidth=linewidth,
         )
 

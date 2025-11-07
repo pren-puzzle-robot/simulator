@@ -233,10 +233,14 @@ class Edge:
             # update index
             index = mid_index + i
 
+            test_1 = (left_bound + abs(curr_extrema_value)) * 2
+            test_2 = (right_bound - abs(curr_extrema_value)) * 2
+            test_3 = x[index]
+
             # exit loop if the found extrema is larger than the distance to the edge
-            if (left_bound + abs(curr_extrema_value)) ** 2 >= x[index] or (
+            if (left_bound + abs(curr_extrema_value)) * 7 >= x[index] or (
                 right_bound - abs(curr_extrema_value)
-            ) ** 2 <= x[index]:
+            ) * 7 <= x[index]:
                 break
 
         return_value: tuple[float, float] = (x[curr_extrema_index], curr_extrema_value)
@@ -251,7 +255,7 @@ class Edge:
             raise ValueError(
                 "Signatures must be of the same length to compute similarity."
             )
-        
+
         mean_integral: float = (self.get_integral() + other.get_integral()) / 2.0
         mean_width: float = (self.get_width + other.get_width) / 2.0
         mean_height: float = (self.get_height + other.get_height) / 2.0
@@ -259,10 +263,14 @@ class Edge:
         x_s, y_s = self.get_plotvalues()
         x_o, y_o = other.get_plotvalues()
 
-        value_offset_normal = Edge._get_off_set_between_signatures((x_s, y_s), (x_o, y_o))
+        value_offset_normal = Edge._get_off_set_between_signatures(
+            (x_s, y_s), (x_o, y_o)
+        )
         diff_integral_normal: float = Edge.compute_difference(x_s, y_s, x_o, y_o)
 
-        value_offset_invert = Edge._get_off_set_between_signatures((x_s, y_s), (x_o, y_o[::-1]))
+        value_offset_invert = Edge._get_off_set_between_signatures(
+            (x_s, y_s), (x_o, y_o[::-1])
+        )
         diff_integral_invert: float = Edge.compute_difference(x_s, y_s, x_o, y_o[::-1])
 
         if diff_integral_normal < diff_integral_invert:
