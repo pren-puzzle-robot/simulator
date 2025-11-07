@@ -7,6 +7,7 @@ import numpy as np
 import cv2
 from scipy.ndimage import gaussian_filter1d
 import matplotlib.pyplot as plt
+import re
 
 
 def load_mask(path):
@@ -224,12 +225,15 @@ def process_piece(path, out_dir, samples=256):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--glob", default="piece_*.png", help="file glob for pieces")
+    ap.add_argument("--input", default=".", help="input directory containing piece images")
     ap.add_argument("--out", default="out", help="output folder")
     ap.add_argument("--samples", type=int, default=256, help="signature length")
     args = ap.parse_args()
 
-    files = sorted(glob.glob(args.glob))
+    files = [
+        f for f in glob.glob(os.path.join(args.input, "piece_*.png"))
+        if re.fullmatch(r".*piece_\d+\.png", f)
+    ]
     if not files:
         print('No files matched. Example: --glob "piece_*.png"')
         return

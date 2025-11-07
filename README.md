@@ -22,7 +22,7 @@ python .\annotate_piece_masks.py --indir ..\output\ --outdir ..\output\annotated
 **Step 3** - _Detect Edges_\
 Sample the detected edges and compile their surface as a plot
 ```powershell
-python detect_edges.py --glob "..\output\piece_*.png" --out ..\output\
+python detect_edges.py --input "..\output\" --out ..\output\
 ```
 
 **Step 4** - _Match Edges_\
