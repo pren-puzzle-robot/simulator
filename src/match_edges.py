@@ -26,6 +26,30 @@ def main():
     for i in range(1, n + 1):
         _compute_plots_per_piece(i)
 
+    manager = plt.get_current_fig_manager()
+    manager.set_window_title(f"{FILENAME} - detail - P.1_Top & P.3_Top")
+
+    base: Edge = PUZZLE[1].get_edges["Top"]
+    other: Edge = PUZZLE[3].get_edges["Top"]
+
+    x_base, y_base = base.get_plotvalues()
+    x_other, y_other = other.get_plotvalues()
+
+    plt.figure(figsize=(8, 6), dpi=100)
+    plt.plot(x_base, y_base, color="blue", label="Piece 1 - Top - original", linewidth=2)
+    plt.plot(x_other, y_other, color="orange", label="Piece 3 - Top - original", linewidth=2)
+
+
+    plt.title("Kantenvergleich im Detail")
+    plt.xlabel("Kantenlänge [px.]")
+    plt.ylabel("d/dx des Höhenprofils [f'(px.)]")
+    plt.legend()
+    plt.grid(True)
+
+    plt.tight_layout()
+    plt.show()
+    plt.savefig("../output/demo_detail_matching.png")
+
 
 def _compute_ranking_per_edge(base: Edge, piece: int) -> dict[Edge, float]:
     edges: dict[Edge, float] = {}
