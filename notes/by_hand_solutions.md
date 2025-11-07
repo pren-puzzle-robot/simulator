@@ -19,8 +19,8 @@ File: simple_1_rotated.png
 | ----- | ----------- | -------------- | ----------- | ------------- |
 | 1     | -           | (Right/Top)    | (Top/Top)   |               |
 | 2     | (Top/Right) | -              |             | (Right/Right) |
-| 3     | (Top/Top)   |                | -           | (Left/Left)   |
-| 4     |             | (Right/Bottom) | (Left/Left) | -             |
+| 3     | (Top/Top)   |                | -           | (Left/Bottom)   |
+| 4     |             | (Right/Bottom) | (Bottom/Left) | -             |
 
 > **_Explanation:_**\
 > \* : **( x / y )** <=> ...\
