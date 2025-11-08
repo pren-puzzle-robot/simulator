@@ -12,6 +12,7 @@ from __future__ import annotations
 __copyright__ = "Copyright (c) 2025 HSLU PREN Team 13, HS25. All rights reserved."
 
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 
 
@@ -54,4 +55,21 @@ def analyze_plot(plot, min_prominence=0.1, min_distance=10):
     return points
 
 
+def main():
+    # Example data: mostly flat, two peaks
+    x = list(range(100))
+    y = [0] * 20 + [1, 3, 6, 9, 6, 3, 1] + [0] * 30 + [0, 2, 4, 8, 4, 2, 0] + [0] * 36
+
+    peaks = analyze_plot((x, y), min_prominence=2, min_distance=10)
+    print(peaks)
+
+    # Optional: visualize
+    plt.plot(x, y)
+    for p in peaks:
+        plt.plot(p["x"], p["y"], "ro")
+    plt.show()
+
+
+if __name__ == "__main__":
+    main()
 # TODO: Fix everything (x_x)
