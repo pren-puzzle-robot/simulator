@@ -6,7 +6,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 
-#from utilities.plot_computation import analyze_plot
+from utilities.plot_computation import compute_offset
+
 
 from component import PuzzlePiece, Edge
 
@@ -98,18 +99,55 @@ def main():
     # plt.show()
     plt.savefig("../output/demo_detail_matching.png")
 
-    # Example data: mostly flat, two peaks
-    #x = list(range(100))
-    #y = [0]*20 + [1,3,6,9,6,3,1] + [0]*30 + [0,2,4,8,4,2,0] + [0]*36
+    fig1, ax1 = plt.subplots(figsize=(8, 6), dpi=100)
+    ax1.set_title("Beispiel-Plot zur Peak-Analyse")
+    ax1.set_xlabel("X-Achse [px.]")
+    ax1.set_ylabel("Y-Achse [Höhe f'(px.)]")
+    ax1.grid(True)
 
-    #peaks = analyze_plot((x, y), min_prominence=2, min_distance=10)
-    #print(peaks)
+    # Example data: mostly flat, two peaks
+    # x = list(range(100))
+    # y = [0] * 20 + [1, 3, 6, 9, 6, 3, 1] + [0] * 30 + [0, 2, 4, 8, 4, 2, 0] + [0] * 36
+
+    plot_a = PUZZLE[2].get_edges["Top"].get_plotvalues()
+    plot_b = PUZZLE[4].get_edges["Left"].get_plotvalues()
+
+    dx, dy = compute_offset(plot_a, plot_b)
+    # peaks = analyze_plot(
+    #    (x, y),
+    #    min_prominence=2,
+    #    min_distance=10,
+    # )
+    # print(peaks)
 
     # Optional: visualize
-    #plt.plot(x_final, list(b for (a, b) in y_values_final))
-    #for p in peaks:
-    #    plt.plot(p["x"], p["y"], "ro")
-    #plt.show()
+    ax1.plot(
+        plot_a[0],
+        plot_a[1],
+        label="Piece 2 - Top",
+        color="blue",
+        linewidth=2,
+    )
+    ax1.plot(
+        plot_b[0],
+        plot_b[1],
+        label="Piece 4 - Left",
+        color="orange",
+        linewidth=2,
+        alpha=0.5,
+    )
+    ax1.plot(
+        list(x + dx for x in plot_b[0]),
+        list(y + dy for y in plot_b[1]),
+        label="Piece 4 - Left (adjusted)",
+        color="orange",
+        linewidth=2,
+    )
+    # for x_p, y_p in peaks:
+    #    ax1.plot(x_p, y_p, "ro")
+    # fig1.show()
+    ax1.legend()
+    fig1.savefig("../output/demo_peak_analysis.png")
 
 
 def _compute_ranking_per_edge(base: Edge, piece: int) -> dict[Edge, float]:
