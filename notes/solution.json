@@ -1,0 +1,89 @@
+{
+  "solution_for": "simple_1_rotated.png",
+  "type": "handmade",
+  "date": "2025-11-10T12:36:00Z",
+  "author": "Anthony Wernli",
+  "number_of_pieces": 4,
+  "matches": {
+    "1": {
+      "sides": {
+        "Top": {
+          "matched_piece": 3,
+          "matched_side": "Top"
+        },
+        "Right": {
+          "matched_piece": 2,
+          "matched_side": "Top"
+        },
+        "Bottom": {
+          "matched_piece": null,
+          "matched_side": null
+        },
+        "Left": {
+          "matched_piece": null,
+          "matched_side": null
+        }
+      }
+    },
+    "2": {
+      "sides": {
+        "Top": {
+          "matched_piece": 1,
+          "matched_side": "Right"
+        },
+        "Right": {
+          "matched_piece": 4,
+          "matched_side": "Right"
+        },
+        "Bottom": {
+          "matched_piece": null,
+          "matched_side": null
+        },
+        "Left": {
+          "matched_piece": null,
+          "matched_side": null
+        }
+      }
+    },
+    "3": {
+      "sides": {
+        "Top": {
+          "matched_piece": 1,
+          "matched_side": "Top"
+        },
+        "Right": {
+          "matched_piece": null,
+          "matched_side": null
+        },
+        "Bottom": {
+          "matched_piece": null,
+          "matched_side": null
+        },
+        "Left": {
+          "matched_piece": 4,
+          "matched_side": "Bottom"
+        }
+      }
+    },
+    "4": {
+      "sides": {
+        "Top": {
+          "matched_piece": null,
+          "matched_side": null
+        },
+        "Right": {
+          "matched_piece": 2,
+          "matched_side": "Right"
+        },
+        "Bottom": {
+          "matched_piece": 3,
+          "matched_side": "Left"
+        },
+        "Left": {
+          "matched_piece": null,
+          "matched_side": null
+        }
+      }
+    }
+  }
+}

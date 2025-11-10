@@ -1,5 +1,7 @@
 """Code-File providing the matching of puzzle edges."""
 
+from __future__ import annotations
+
 import os
 
 from pathlib import Path
@@ -8,23 +10,54 @@ from matplotlib.axes import Axes
 
 from utilities.plot_computation import compute_offset
 
-
-from component import PuzzlePiece, Edge
+from component import PuzzlePiece, Edge, Solution
 
 DIRECTIONS = ["Top", "Right", "Bottom", "Left"]
 COLOURS = ["blue", "orange", "green", "red"]
 FILENAME = os.path.basename(__file__)
 LIVE_DEMO = False  # set to True to show plots interactively
 
-PUZZLE: dict[int, PuzzlePiece] = {}
+
+def _setup_puzzle_data() -> dict[int, PuzzlePiece]:
+    """Setup the needed information about the puzzle by\n
+    scanning the json files and creating a `dict` with\n
+    `PuzzlePieces` as elements to access their data more\n
+    easily."""
+    i: int = 1
+    path: Path = Path(__file__).parent.parent / "output" / f"piece_{i}_edges.json"
+    path.resolve()
+
+    result: dict[int, PuzzlePiece] = {}
+
+    while path.exists():
+        piece = PuzzlePiece.from_json(path)
+        result[i] = piece
+
+        i += 1
+        path = Path(__file__).parent.parent / "output" / f"piece_{i}_edges.json"
+
+    return result
+
+
+def _setup_solution_data() -> Solution | None:
+    """Setup the solution data from the json file into a\n
+    dictionary for easy access."""
+    path: Path = Path(__file__).parent.parent / "notes" / "solution.json"
+    path.resolve()
+
+    if path.exists():
+        return Solution.from_json(path)
+
+    return None
+
+
+PUZZLE: dict[int, PuzzlePiece] = _setup_puzzle_data()
+SOLUTION: Solution | None = _setup_solution_data()
 
 
 def main():
     """main function to match edges and create plots"""
-
-    _setup_puzzle_data()
-
-    n: int = PUZZLE.__len__()
+    n: int = len(PUZZLE)
 
     for i in range(1, n + 1):
         _compute_plots_per_piece(i)
@@ -70,7 +103,7 @@ def main():
     x_other_adapted = list(a + abs(x_b_ex - x_o_ex) for a in x_other)
     y_other_adapted = list(b - abs(y_b_ex - y_o_ex) for b in y_other)
 
-    x_final, y_values_final = Edge._compute_matching_plots(
+    x_final, y_values_final = Edge.compute_matching_plots(
         x_base, y_base, x_other_adapted, y_other_adapted
     )
 
@@ -212,10 +245,20 @@ def _draw_subplots(
     score: float = 0.0
     score_set: bool = False
 
+    x_b, y_b = base.get_plotvalues()
+
+    current_solution: tuple[int, str] | None = None
+    global SOLUTION
+
+    if SOLUTION is not None:
+        current_solution = SOLUTION.get_match(base.get_piece, base.get_direction)
+
     for edge, value in others.items():
         if not score_set:
             score = value
             score_set = True
+
+        linestyle = "-"
 
         if value * 1.05 >= score:
             color = colour
@@ -223,40 +266,44 @@ def _draw_subplots(
         else:
             color = "gray"
             linewidth = 1
+            if (
+                current_solution is not None
+                and edge.get_piece == current_solution[0]
+                and edge.get_direction == current_solution[1].upper()
+            ):
+                color = colour
+                linestyle = "--"
 
-        x, y = edge.get_plotvalues()
+        x_t, y_t = edge.get_plotvalues()
+        x_value, y_values = Edge.compute_matching_plots(x_b, y_b, x_t, y_t)
+
+        y_value = [y2 for y1, y2 in y_values]
 
         subplot.plot(
-            x,
-            y,
+            x_value,
+            y_value,
             color=color,
             label=f"Piece {edge.get_piece} - {edge.get_direction[0]} - {(value * 100):.2f}%",
             alpha=max(0.0, value),
             linewidth=linewidth,
+            linestyle=linestyle,
         )
+
+    leg = subplot.legend()
+
+    if current_solution is not None:
+        for text in leg.get_texts():
+            if not text.get_text() == "Original":
+                parts = text.get_text().split(" - ")
+                piece_num = int(parts[0].split()[1])
+                align = parts[1]
+                if piece_num == current_solution[0] and align == current_solution[1][0]:
+                    text.set_color(colour)
 
     subplot.set_title(f"Kante - {base.get_direction.capitalize()}")
     subplot.set_xlabel("Kantenlänge [px.]")
     subplot.set_ylabel("d/dx des Höhenprofils [f'(px.)]")
-    subplot.legend()
     subplot.grid(True)
-
-
-def _setup_puzzle_data() -> None:
-    """Setup the needed information about the puzzle by\n
-    scanning the json files and creating a `dict` with\n
-    `PuzzlePieces` as elements to access their data more\n
-    easily."""
-    i: int = 1
-    path: Path = Path(__file__).parent.parent / "output" / f"piece_{i}_edges.json"
-    path.resolve()
-
-    while path.exists():
-        piece = PuzzlePiece.from_json(path)
-        PUZZLE[i] = piece
-
-        i += 1
-        path = Path(__file__).parent.parent / "output" / f"piece_{i}_edges.json"
 
 
 def _combine_bits(a: int, b: int) -> int:

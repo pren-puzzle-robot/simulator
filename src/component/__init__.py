@@ -7,5 +7,6 @@ __copyright__ = "Copyright (c) 2025 HSLU PREN Team 13, HS25. All rights reserved
 from .puzzle_piece import PuzzlePiece
 from .edge import Edge, EdgeDir
 from .corner import Corner
+from .solution import Solution
 
-__all__ = ["Edge", "EdgeDir", "Corner", "PuzzlePiece"]
+__all__ = ["Edge", "EdgeDir", "Corner", "PuzzlePiece", "Solution"]

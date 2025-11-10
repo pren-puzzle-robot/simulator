@@ -15,11 +15,11 @@ File: simple_1_rotated.png
 
 ### Solution:
 
-| Idx\* | 1           | 2              | 3           | 4             |
-| ----- | ----------- | -------------- | ----------- | ------------- |
-| 1     | -           | (Right/Top)    | (Top/Top)   |               |
-| 2     | (Top/Right) | -              |             | (Right/Right) |
-| 3     | (Top/Top)   |                | -           | (Left/Bottom)   |
+| Idx\* | 1           | 2              | 3             | 4             |
+| ----- | ----------- | -------------- | ------------- | ------------- |
+| 1     | -           | (Right/Top)    | (Top/Top)     |               |
+| 2     | (Top/Right) | -              |               | (Right/Right) |
+| 3     | (Top/Top)   |                | -             | (Left/Bottom) |
 | 4     |             | (Right/Bottom) | (Bottom/Left) | -             |
 
 > **_Explanation:_**\

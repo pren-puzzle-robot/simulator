@@ -14,6 +14,8 @@ from enum import Enum
 
 from numpy import interp, asarray
 
+from utilities.plot_computation import compute_offset
+
 from .corner import Corner
 
 
@@ -233,10 +235,6 @@ class Edge:
             # update index
             index = mid_index + i
 
-            test_1 = (left_bound + abs(curr_extrema_value)) * 2
-            test_2 = (right_bound - abs(curr_extrema_value)) * 2
-            test_3 = x[index]
-
             # exit loop if the found extrema is larger than the distance to the edge
             if (left_bound + abs(curr_extrema_value)) * 7 >= x[index] or (
                 right_bound - abs(curr_extrema_value)
@@ -263,14 +261,10 @@ class Edge:
         x_s, y_s = self.get_plotvalues()
         x_o, y_o = other.get_plotvalues()
 
-        value_offset_normal = Edge._get_off_set_between_signatures(
-            (x_s, y_s), (x_o, y_o)
-        )
+        value_offset_normal = compute_offset((x_s, y_s), (x_o, y_o))
         diff_integral_normal: float = Edge.compute_difference(x_s, y_s, x_o, y_o)
 
-        value_offset_invert = Edge._get_off_set_between_signatures(
-            (x_s, y_s), (x_o, y_o[::-1])
-        )
+        value_offset_invert = compute_offset((x_s, y_s), (x_o, y_o[::-1]))
         diff_integral_invert: float = Edge.compute_difference(x_s, y_s, x_o, y_o[::-1])
 
         if diff_integral_normal < diff_integral_invert:
@@ -296,7 +290,7 @@ class Edge:
         another by returning the percentile amount to which the integrals\n
         differ and returning it as a `float` value between `0.0` and `1.0`."""
 
-        x, y_values = Edge._compute_matching_plots(x_s, y_s, x_o, y_o)
+        x, y_values = Edge.compute_matching_plots(x_s, y_s, x_o, y_o)
 
         seg_length: float = abs(x[0] - x[-1]) / float(len(x))
 
@@ -310,27 +304,27 @@ class Edge:
         return min(sum_diffs_var1, sum_diffs_var2)
 
     @staticmethod
-    def _compute_matching_plots(
+    def compute_matching_plots(
         x_s: list[float], y_s: list[float], x_o: list[float], y_o: list[float]
     ) -> tuple[list[float], list[tuple[float, float]]]:
         """Compute the matching plot values between this edge's signature and that of\n
         another edge, adjusted for offset."""
-        value_offset = Edge._get_off_set_between_signatures((x_s, y_s), (x_o, y_o))
+        value_offset = compute_offset((x_s, y_s), (x_o, y_o))
 
-        adjusted_x_s = [a + value_offset[0] for a in x_s]
-        adjusted_y_s = [b + value_offset[1] for b in y_s]
+        adjusted_x_o = [a + value_offset[0] for a in x_o]
+        adjusted_y_o = [b + value_offset[1] for b in y_o]
 
-        min_x_value: float = max(adjusted_x_s[0], x_o[0])
-        max_x_value: float = min(adjusted_x_s[-1], x_o[-1])
+        min_x_value: float = max(x_s[0], adjusted_x_o[0])
+        max_x_value: float = min(x_s[-1], adjusted_x_o[-1])
 
-        start_idx = next(i for i, v in enumerate(adjusted_x_s) if v >= min_x_value)
-        end_idx = next(i for i, v in enumerate(adjusted_x_s) if v >= max_x_value)
+        start_idx = next(i for i, v in enumerate(x_s) if v >= min_x_value)
+        end_idx = next(i for i, v in enumerate(x_s) if v >= max_x_value)
 
-        intersect_x = adjusted_x_s[start_idx:end_idx]
+        intersect_x = x_s[start_idx:end_idx]
 
-        intersect_y_s: list[float] = adjusted_y_s[start_idx:end_idx]
+        intersect_y_s: list[float] = y_s[start_idx:end_idx]
         intersect_y_o: list[float] = asarray(
-            interp(intersect_x, x_o, y_o), dtype=float
+            interp(intersect_x, adjusted_x_o, adjusted_y_o), dtype=float
         ).tolist()
         intersect_y = list(zip(intersect_y_s, intersect_y_o))
 
