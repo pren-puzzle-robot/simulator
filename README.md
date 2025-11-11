@@ -52,3 +52,10 @@ Compute the longest edges of each puzzle piece
 python .\long_edges.py
 ```
 
+**Step 4** - _Match Edges_\
+Arrange Pieces
+```powershell
+python .\arrange_pieces.py
+```
+
+
