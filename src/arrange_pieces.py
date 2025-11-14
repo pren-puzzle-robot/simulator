@@ -221,14 +221,46 @@ def place(corners_path, outer_edges_path, out_layout="puzzle_layout.json", previ
     # Optional preview using polygons only
     if preview_png:
         from math import ceil
+        import random
+
+        # Deterministic color per piece name
+        def color_for_name(name: str):
+            # fixed seed based on name for stable colors
+            rnd = random.Random(hash(name) & 0xFFFFFFFF)
+            r = rnd.randint(50, 230)
+            g = rnd.randint(50, 230)
+            b = rnd.randint(50, 230)
+            return (r, g, b, 255)
+
+        # Canvas size
         Wc, Hc = ceil(W), ceil(H)
-        img = Image.new("RGBA", (max(1,Wc), max(1,Hc)), (0,0,0,0))
+        width = max(1, Wc)
+        height = max(1, Hc)
+
+        # Transparent background
+        img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
-        for name, p in pieces.items():
-            if name not in placements: continue
-            dx, dy = placements[name]["tx"], placements[name]["ty"]
-            poly = [(x+dx, y+dy) for (x,y) in p["poly"]]
-            draw.polygon(poly, outline=(0,0,0,255))
+
+        line_width = 3  # thicker lines to make overlaps stand out
+
+        for name, piece in pieces.items():
+            if name not in placements:
+                continue
+
+            dx = placements[name]["tx"]
+            dy = placements[name]["ty"]
+
+            poly = [(x + dx, y + dy) for (x, y) in piece["poly"]]
+
+            outline = color_for_name(name)
+            fill = (outline[0], outline[1], outline[2], 40)  # very light transparent fill
+
+            # Filled polygon with colored border
+            draw.polygon(poly, fill=fill, outline=outline)
+
+            # Extra explicit outline (helps on older Pillow without polygon width)
+            draw.line(poly + [poly[0]], fill=outline, width=line_width)
+
         img.save(preview_png)
 
     return payload
