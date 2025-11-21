@@ -15,6 +15,7 @@ import json
 
 from .edge import Edge
 from .corner import Corner
+from utilities import Point
 
 
 class PuzzlePiece:
@@ -42,6 +43,18 @@ class PuzzlePiece:
         self._right = right
         self._bottom = bottom
         self._left = left
+
+    # mock
+    def get_polygon(self) -> list[Point]:
+        """mock method to trick pylance"""
+        mock_list: list[Point] = []
+        return mock_list
+
+    # mock
+    def get_triplet(self, index: int) -> tuple[Point, Point, Point]:
+        """mock method returning the point at that index the previous one and the next"""
+        a: Point = Point(0, 0)
+        return (a, a, a)
 
     @classmethod
     def from_json(cls, path: Path) -> PuzzlePiece:
