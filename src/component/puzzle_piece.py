@@ -1,106 +1,88 @@
-# -*- coding: utf-8 -*-
-"""
-Base class for puzzle pieces and the values associated with them.\n
-It is just an alterativ to the json files but it should make it\n
-easier to access. Adapt at your own leisure.\n
-"""
-
 from __future__ import annotations
+from typing import Iterable, List
 
-__copyright__ = "Copyright (c) 2025 HSLU PREN 1 Team 13, HS25. All rights reserved."
-
-from pathlib import Path
-
-import json
-
-from .edge import Edge
-from .corner import Corner
+from .point import Point
+from .polygon import Polygon
+from .piece_analysis import PieceType, OuterEdge, PieceAnalysis, analyze_polygon
 
 
 class PuzzlePiece:
-    """A single puzzle piece that was recognized\n
-    in the image and all the data associated with it."""
+    """
+    Represents a single puzzle piece.
 
-    JSON_INDEX_NAME: str = "piece"
-    JSON_EDGEDIR_NAME: str = "sides"
-    JSON_SIDE_NAMES: list[str] = ["Top", "Right", "Bottom", "Left"]
-    JSON_CLASS_NAME: str = "class"
-    JSON_CORNER_NAME: str = "segment"
-    JSON_ELEVATION_NAME: str = "signature"
+    The piece is defined by:
+    - a polygon (constructed from a list of Point instances)
+    - a type (corner or edge)
+    - a list of detected outer edges
+    """
 
-    _idx: int
-    _top: Edge
-    _right: Edge
-    _bottom: Edge
-    _left: Edge
+    _polygon: Polygon
+    _type: PieceType
+    _outer_edges: List[OuterEdge]
 
-    def __init__(
-        self, idx: int, top: Edge, right: Edge, bottom: Edge, left: Edge
-    ) -> None:
-        self._idx = idx
-        self._top = top
-        self._right = right
-        self._bottom = bottom
-        self._left = left
+    def __init__(self, points: Iterable[Point]) -> None:
+        points_list: List[Point] = list(points)
+        if len(points_list) < 3:
+            raise ValueError("PuzzlePiece requires at least 3 points")
 
-    @classmethod
-    def from_json(cls, path: Path) -> PuzzlePiece:
-        """Create a new `PuzzlePiece` from the information saved\n
-        in the `JSON` file at the given directory via `dir`."""
+        self._polygon = Polygon(points_list)
 
-        # open the json file at the given directory and store the data
-        with open(path, "r", encoding="utf-8") as file:
-            json_data = json.load(file)
+        # First analysis
+        analysis = analyze_polygon(self._polygon)
+        # Normalize vertex order based on this analysis
+        self._normalize_vertex_order(analysis)
 
-        idx: int = int(json_data[cls.JSON_INDEX_NAME][-1])
+        # Re-analyze after rotation so indices and outer_edges match
+        final_analysis = analyze_polygon(self._polygon)
+        self._type = final_analysis.piece_type
+        self._outer_edges = final_analysis.outer_edges
 
-        edge_data = json_data[cls.JSON_EDGEDIR_NAME]
-        edges: dict[str, Edge] = {}
+    def _normalize_vertex_order(self, analysis: PieceAnalysis) -> None:
+        """
+        Rotate polygon vertices so that the first vertex is the
+        end point (j) of a chosen outer edge.
+        """
+        if not analysis.outer_edges:
+            # Should not happen with only corner/edge pieces,
+            # but do nothing if it does.
+            return
 
-        for side in cls.JSON_SIDE_NAMES:
-            signature_values: list[float] = edge_data[side][cls.JSON_ELEVATION_NAME]
-            corner_values = edge_data[side][cls.JSON_CORNER_NAME]
-            edge_class: str = edge_data[side][cls.JSON_CLASS_NAME]
+        # Choose the last outer edge as canonical
+        edge = analysis.outer_edges[-1]
+        target_index = edge.j  # last vertex index of that edge
 
-            x1, y1 = corner_values[0]
-            start = Corner(x=x1, y=y1)
+        verts = self._polygon.vertices
+        n = len(verts)
+        if n == 0:
+            return
 
-            x2, y2 = corner_values[1]
-            end = Corner(x=x2, y=y2)
+        # Rotate list: new_verts[0] == verts[target_index]
+        target_index = target_index % n
+        new_verts = verts[target_index:] + verts[:target_index]
 
-            edges[side] = Edge(
-                piece=idx,
-                start=start,
-                end=end,
-                direction=side,
-                cat=edge_class,
-                signature=signature_values,
-            )
-
-        return cls(
-            idx=idx,
-            top=edges[cls.JSON_SIDE_NAMES[0]],
-            right=edges[cls.JSON_SIDE_NAMES[1]],
-            bottom=edges[cls.JSON_SIDE_NAMES[2]],
-            left=edges[cls.JSON_SIDE_NAMES[3]],
-        )
+        # Replace polygon with rotated vertices
+        self._polygon = Polygon(new_verts)
 
     @property
-    def get_edges(self) -> dict[str, Edge]:
-        """Get all edges of the puzzle piece as a dictionary."""
-        return {
-            "Top": self._top,
-            "Right": self._right,
-            "Bottom": self._bottom,
-            "Left": self._left,
-        }
+    def polygon(self) -> Polygon:
+        return self._polygon
 
-    def __str__(self) -> str:
-        return (
-            "PuzzlePiece:\n"
-            f" Piece {str(self._idx)}\n"
-            f" {str(self._top)}\n"
-            f" {str(self._right)}\n"
-            f" {str(self._bottom)}\n"
-            f" {str(self._left)}\n"
-        )
+    @property
+    def type(self) -> PieceType:
+        return self._type
+
+    @property
+    def outer_edges(self) -> List[OuterEdge]:
+        """Detected outer edges of this piece."""
+        return self._outer_edges
+
+    @property
+    def is_corner(self) -> bool:
+        return self._type == PieceType.CORNER
+
+    @property
+    def is_edge(self) -> bool:
+        return self._type == PieceType.EDGE
+
+    def __repr__(self) -> str:
+        return f"PuzzlePiece(type={self._type.value!r}, polygon={self._polygon!r})"
