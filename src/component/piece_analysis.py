@@ -12,30 +12,37 @@ from .polygon import Polygon
 
 
 # ---------- Tunables ----------
-LONG_EDGE_VS_MEDIAN = 1.8   # edge is "long" if length >= median*this
-LONG_EDGE_VS_MAX    = 0.60  # ...and also >= this * (longest length)
-CORNER_ANGLE_RANGE  = (60.0, 120.0)  # degrees
+LONG_EDGE_VS_MEDIAN = 1.8  # edge is "long" if length >= median*this
+LONG_EDGE_VS_MAX = 0.60  # ...and also >= this * (longest length)
+CORNER_ANGLE_RANGE = (60.0, 120.0)  # degrees
 # ------------------------------
 
 
 class PieceType(str, Enum):
     CORNER = "corner"
-    EDGE   = "edge"   # default if not clearly a corner
+    EDGE = "edge"  # default if not clearly a corner
 
 
 @dataclass
 class OuterEdge:
     """Outer edge of a piece, expressed in terms of polygon vertex indices."""
-    i: int         # start vertex index
-    j: int         # end vertex index (wrapped)
-    p1: Point      # start point
-    p2: Point      # end point
+
+    i: int  # start vertex index
+    j: int  # end vertex index (wrapped)
+    p1: Point  # start point
+    p2: Point  # end point
     length: float  # Euclidean length
+
+    @property
+    def get_indices(self) -> tuple[int, int]:
+        """Return the indices of the outeredge."""
+        return (self.i, self.j)
 
 
 @dataclass
 class PieceAnalysis:
     """Result of analyzing a polygon."""
+
     piece_type: PieceType
     outer_edges: List[OuterEdge]
 
@@ -96,7 +103,8 @@ def analyze_polygon(poly: Polygon) -> PieceAnalysis:
 
     # candidate long edges
     long_edges: List[OuterEdge] = [
-        e for e in edges
+        e
+        for e in edges
         if e.length >= max(LONG_EDGE_VS_MEDIAN * Lmed, LONG_EDGE_VS_MAX * Lmax)
     ]
 

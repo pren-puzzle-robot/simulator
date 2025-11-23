@@ -63,6 +63,68 @@ class PuzzlePiece:
         # Replace polygon with rotated vertices
         self._polygon = Polygon(new_verts)
 
+    def get_triplet(self, index: int, direction: bool) -> tuple[Point, Point, Point]:
+        """
+        Get the point at the given `index` but also the two surounding\n
+        points before and after. Works like a wrapper. After the last\n
+        in the list comes the first again. The boolean says if you are\n
+        going forward or backwards. Example `direction` == `true` -> forward,\n
+        `false` -> backwards.
+        """
+        points: list[Point] = self.polygon.vertices
+        length: int = len(points)
+
+        if direction:
+            inverted = 1
+        else:
+            inverted = -1
+
+        prev_index: int = (index - 1 * inverted) % length
+        next_index: int = (index + 1 * inverted) % length
+
+        return (points[prev_index], points[index], points[next_index])
+
+    def get_limits(self) -> tuple[int, int]:
+        """
+        Get the lowest and the highest index of the polygon that are at\n
+        the edge of an outer edge.
+        """
+        data: list[tuple[int, int]] = [edge.get_indices for edge in self._outer_edges]
+        length: int = len(self.polygon.vertices)
+
+        vertices: set[int] = {v for u, v in data for v in (u, v)}
+
+        points_sorted = sorted(vertices)
+
+        def cyclic_distance(a: int, b: int, n: int) -> int:
+            """shortest distance in cyclic polygon"""
+            d = (b - a) % n
+            return d
+
+        best_start = None
+        best_len = None
+
+        # try every starting index on the set
+        for s in points_sorted:
+            # distance to all the points
+            dists = [cyclic_distance(s, v, length) for v in vertices]
+            max_dist = max(dists)  # how far does it go
+            if best_len is None or max_dist < best_len:
+                best_len = max_dist
+                best_start = s
+
+        if best_start is None or best_len is None:
+            raise RuntimeError("Internal error: no start point selected")
+
+        start = best_start
+        end = (best_start + best_len) % length
+
+        result = (start, end)
+
+        if start > end:
+            result = (end, start)
+        return result
+
     @property
     def polygon(self) -> Polygon:
         return self._polygon
