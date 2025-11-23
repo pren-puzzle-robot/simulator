@@ -73,11 +73,7 @@ class PuzzlePiece:
         """
         points: list[Point] = self.polygon.vertices
         length: int = len(points)
-
-        if direction:
-            inverted = 1
-        else:
-            inverted = -1
+        inverted: int = 1 if direction else -1
 
         prev_index: int = (index - 1 * inverted) % length
         next_index: int = (index + 1 * inverted) % length

@@ -19,83 +19,91 @@ def main() -> None:
     """greedy matching"""
 
     # get the first corner piece
-    starting_index, starting_piece = next(
-        (i, p) for i, p in PUZZLE.items() if p.is_corner
-    )
-    remaining_pieces: dict[int, PuzzlePiece] = {
-        k: v for k, v in PUZZLE.items() if k != starting_index
-    }
+    index: int = next(i for i, p in PUZZLE.items() if p.is_corner)
+    direction: bool = True
+    origin: tuple[int, bool] = (index, direction)
 
-    # ~~~show first piec -> soon: put it at the top left
-    img = render_puzzle_piece(starting_piece, scale=0.5, margin=50)
-    cv2.imshow("Firt Piece", img)
+    remaining_edges: list[int] = [k for k in PUZZLE if k != index]
+
+    i: int = 1
+
+    img = render_puzzle_piece(PUZZLE[origin[0]], scale=0.5, margin=50)
+    cv2.imshow(f"{i}. Piece", img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-    # find next matching puzzle piece
-    index, possible_matches = _find_matching_puzzle_piece(
-        starting_piece, remaining_pieces
-    )
+    while len(remaining_edges) != 0:
+        i += 1
+        indecies, possible_matches = _find_matching_puzzle_piece(
+            origin, remaining_edges
+        )
+        if len(possible_matches) == 1:
+            origin = possible_matches.pop()
+            remaining_edges.remove(origin[0])
+            origin = (origin[0], not origin[1])
 
-    next_piece = None
-    # show next piece
-    if len(possible_matches) == 1:
-        next_index, next_piece = possible_matches.popitem()
-
-    img = render_puzzle_piece(next_piece, scale=0.5, margin=50)
-    cv2.imshow("Second Piece", img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+            img = render_puzzle_piece(PUZZLE[origin[0]], scale=0.5, margin=50)
+            cv2.imshow(f"{i}. Piece", img)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
 
 
 def _find_matching_puzzle_piece(
-    origin: PuzzlePiece, remaining: dict[int, PuzzlePiece]
-) -> tuple[int, dict[int, PuzzlePiece]]:
-    prev_remaining: dict[int, PuzzlePiece] = remaining.copy()
-    curr_remaining: dict[int, PuzzlePiece] = remaining.copy()
+    origin: tuple[int, bool], remaining: list[int]
+) -> tuple[tuple[int, int], list[tuple[int, bool]]]:
+    # flip-flopping list of remaining matches
+    prev_remaining: list[tuple[int, bool]] = [(n, True) for n in remaining] + [
+        (n, False) for n in remaining
+    ]
+    curr_remaining: list[tuple[int, bool]] = prev_remaining.copy()
 
-    o_length: int = len(origin.polygon.vertices)
+    # setup values for the original puzzlepiece
+    origin_piece = PUZZLE[origin[0]]
+    o_direction = origin[1]
+    o_length: int = len(origin_piece.polygon.vertices)
+    o_limits: tuple[int, int] = origin_piece.get_limits()
+    o_start: int = o_limits[0] if o_direction else o_limits[1]
+    o_dir: int = 1 if o_direction else -1
+
+    # default solution to be overritten
+    this_edge: tuple[int, int] = (o_start, 0)
+    next_edges: list[tuple[int, bool]] = []
 
     for i in range(0, o_length):
-        o_points = origin.get_triplet(i, True)
-        for j, r in prev_remaining.items():
-            low, high = r.get_limits()
-            low_index = low + i
-            high_index = high - i
-            if i == 0:
-                # normal
-                r_points_normal = r.get_triplet(low_index, True)
-                if _first_segment_matches(o_points, r_points_normal):
-                    continue
+        # current points and edges for origin
+        o_index = o_start + i * o_dir
+        o_points = origin_piece.get_triplet(o_index, o_direction)
+        for m_piece, m_dir in prev_remaining:
+            # current points and edges for a potential match
+            match = PUZZLE[m_piece]
+            m_limits = match.get_limits()
+            m_start = m_limits[0] if m_dir else m_limits[1]
+            m_index = m_start + i * m_dir
+            m_points = match.get_triplet(m_index, m_dir)
 
-                # reverse
-                r_points_reverse = r.get_triplet(high_index, False)
-                if _first_segment_matches(o_points, r_points_reverse):
-                    continue
+            # result of the matching
+            matching = (
+                _first_segment_matches(o_points, m_points)
+                if i == 0
+                else _next_segment_matches(o_points, m_points)
+            )
 
-                del curr_remaining[j]
-            else:
-                # normal
-                r_points_normal = r.get_triplet(low_index, True)
-                if _next_segment_matches(o_points, r_points_normal):
-                    continue
+            # remove from pool if it does not fit
+            if not matching:
+                curr_remaining.remove((m_piece, m_dir))
 
-                # reverse
-                r_points_reverse = r.get_triplet(high_index, False)
-                if _next_segment_matches(o_points, r_points_reverse):
-                    continue
+        if len(curr_remaining) == 0:
+            # in this round the remaining pieces droped out
+            o_last = o_start + (i - 1) * o_dir
+            this_edge = (o_start, o_last)
+            next_edges = prev_remaining
+            break
 
-                del curr_remaining[j]
-
-        if len(curr_remaining.items()) == 0:
-            # in this round all the pieces drop out
-            return (i - 1, prev_remaining)
-
-        # there are still pieces in the pool
+        # shuffel remaining pieces into the upcoming pool
         prev_remaining = curr_remaining.copy()
 
-    # if this is ever used, mistakes were made
-    return (0, remaining)
+    # return all the edges that matched this edge
+    return (this_edge, next_edges)
 
 
 def _first_segment_matches(
