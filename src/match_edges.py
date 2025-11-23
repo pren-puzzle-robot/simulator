@@ -10,7 +10,7 @@ from matplotlib.axes import Axes
 
 from utilities.plot_computation import compute_offset
 
-from component import PuzzlePiece, Edge, Solution
+from component import PuzzlePieceOld, Edge, Solution
 
 DIRECTIONS = ["Top", "Right", "Bottom", "Left"]
 COLOURS = ["blue", "orange", "green", "red"]
@@ -18,7 +18,7 @@ FILENAME = os.path.basename(__file__)
 LIVE_DEMO = False  # set to True to show plots interactively
 
 
-def _setup_puzzle_data() -> dict[int, PuzzlePiece]:
+def _setup_puzzle_data() -> dict[int, PuzzlePieceOld]:
     """Setup the needed information about the puzzle by\n
     scanning the json files and creating a `dict` with\n
     `PuzzlePieces` as elements to access their data more\n
@@ -30,7 +30,7 @@ def _setup_puzzle_data() -> dict[int, PuzzlePiece]:
     result: dict[int, PuzzlePiece] = {}
 
     while path.exists():
-        piece = PuzzlePiece.from_json(path)
+        piece = PuzzlePieceOld.from_json(path)
         result[i] = piece
 
         i += 1

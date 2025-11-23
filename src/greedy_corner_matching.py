@@ -5,14 +5,12 @@ from __future__ import annotations
 import math
 
 from component import PuzzlePiece
-from utilities import Point
-
-
+from utilities import Point, load_pieces
 
 ERROR_MARCHING_LENGTH: float = 0.05
 ERROR_MARCHING_ANGLE: float = 10  # degrees
 
-PUZZLE: dict[int, PuzzlePiece] = {}
+PUZZLE: dict[int, PuzzlePiece] = load_pieces()
 
 
 def main():
@@ -23,8 +21,9 @@ def main():
     # find_matching_puzzle_piece()
 
 
-def _find_matching_puzzle_piece(origin: PuzzlePiece,
-                                remaining: dict[int, PuzzlePiece]) -> tuple[int, dict[int, PuzzlePiece]]:
+def _find_matching_puzzle_piece(
+    origin: PuzzlePiece, remaining: dict[int, PuzzlePiece]
+) -> tuple[int, dict[int, PuzzlePiece]]:
     prev_remaining = remaining
     curr_remaining = remaining
 
@@ -45,19 +44,21 @@ def _find_matching_puzzle_piece(origin: PuzzlePiece,
                 continue
 
             del curr_remaining[j]
-        
+
         if len(curr_remaining.items()) == 0:
             # in this round all the pieces drop out
-            return (i-1, prev_remaining)
-        
+            return (i - 1, prev_remaining)
+
         # there are still pieces in the pool
         prev_remaining = curr_remaining
 
     # if this is ever used, mistakes were made
     return (0, remaining)
 
-def _next_segment_matches(origin: tuple[Point, Point, Point],
-                          match: tuple[Point, Point, Point]) -> bool:
+
+def _next_segment_matches(
+    origin: tuple[Point, Point, Point], match: tuple[Point, Point, Point]
+) -> bool:
     o_prev, o_this, o_next = origin
     m_prev, m_this, m_next = match
 
@@ -72,11 +73,13 @@ def _next_segment_matches(origin: tuple[Point, Point, Point],
     o_angle = _angle_at_this(o_prev, o_this, o_next)
     m_angle = _angle_at_this(m_prev, m_this, m_next)
 
-    angle_matches: bool = ((180.0 - ERROR_MARCHING_ANGLE / 2.0 <= o_angle + m_angle) and \
-        (o_angle + m_angle <= 180.0 + ERROR_MARCHING_ANGLE / 2.0)) \
-        or abs(o_angle - m_angle) <= ERROR_MARCHING_ANGLE / 2.0
+    angle_matches: bool = (
+        (180.0 - ERROR_MARCHING_ANGLE / 2.0 <= o_angle + m_angle)
+        and (o_angle + m_angle <= 180.0 + ERROR_MARCHING_ANGLE / 2.0)
+    ) or abs(o_angle - m_angle) <= ERROR_MARCHING_ANGLE / 2.0
 
     return len_matches and angle_matches
+
 
 def _angle_at_this(prev: Point, this: Point, follow: Point) -> float:
     # vectors leaving the point "this"
@@ -100,6 +103,7 @@ def _angle_at_this(prev: Point, this: Point, follow: Point) -> float:
     angle_rad = math.atan2(abs(cross), dot)
     angle_deg = math.degrees(angle_rad)
     return angle_deg
+
 
 if __name__ == "__main__":
     main()
