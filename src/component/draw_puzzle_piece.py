@@ -5,7 +5,7 @@ from typing import Tuple
 import cv2
 import numpy as np
 
-from .puzzle_piece_old import PuzzlePiece
+from .puzzle_piece import PuzzlePiece
 from .point import Point
 
 
@@ -16,7 +16,9 @@ def _compute_bounds(piece: PuzzlePiece) -> Tuple[float, float, float, float]:
     return min(xs), max(xs), min(ys), max(ys)
 
 
-def _to_img_coords(p: Point, xmin: float, ymin: float, scale: float, margin: int) -> Tuple[int, int]:
+def _to_img_coords(
+    p: Point, xmin: float, ymin: float, scale: float, margin: int
+) -> Tuple[int, int]:
     x = int((p.x - xmin) * scale) + margin
     y = int((p.y - ymin) * scale) + margin
     return x, y

@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import Iterable, List
 
 from pathlib import Path
 
@@ -9,19 +8,22 @@ from .edge import Edge
 from .corner import Corner
 
 
-class PuzzlePiece:
-    """
-    Represents a single puzzle piece.
+class PuzzlePieceOld:
+    """A single puzzle piece that was recognized\n
+    in the image and all the data associated with it."""
 
-    The piece is defined by:
-    - a polygon (constructed from a list of Point instances)
-    - a type (corner or edge)
-    - a list of detected outer edges
-    """
+    JSON_INDEX_NAME: str = "piece"
+    JSON_EDGEDIR_NAME: str = "sides"
+    JSON_SIDE_NAMES: list[str] = ["Top", "Right", "Bottom", "Left"]
+    JSON_CLASS_NAME: str = "class"
+    JSON_CORNER_NAME: str = "segment"
+    JSON_ELEVATION_NAME: str = "signature"
 
-    _polygon: Polygon
-    _type: PieceType
-    _outer_edges: List[OuterEdge]
+    _idx: int
+    _top: Edge
+    _right: Edge
+    _bottom: Edge
+    _left: Edge
 
     def __init__(
         self, idx: int, top: Edge, right: Edge, bottom: Edge, left: Edge
@@ -33,7 +35,7 @@ class PuzzlePiece:
         self._left = left
 
     @classmethod
-    def from_json(cls, path: Path) -> PuzzlePiece:
+    def from_json(cls, path: Path) -> PuzzlePieceOld:
         """Create a new `PuzzlePiece` from the information saved\n
         in the `JSON` file at the given directory via `dir`."""
 
@@ -75,8 +77,21 @@ class PuzzlePiece:
         )
 
     @property
-    def is_edge(self) -> bool:
-        return self._type == PieceType.EDGE
+    def get_edges(self) -> dict[str, Edge]:
+        """Get all edges of the puzzle piece as a dictionary."""
+        return {
+            "Top": self._top,
+            "Right": self._right,
+            "Bottom": self._bottom,
+            "Left": self._left,
+        }
 
-    def __repr__(self) -> str:
-        return f"PuzzlePiece(type={self._type.value!r}, polygon={self._polygon!r})"
+    def __str__(self) -> str:
+        return (
+            "PuzzlePiece:\n"
+            f" Piece {str(self._idx)}\n"
+            f" {str(self._top)}\n"
+            f" {str(self._right)}\n"
+            f" {str(self._bottom)}\n"
+            f" {str(self._left)}\n"
+        )

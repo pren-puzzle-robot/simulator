@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Dict, List
 
 from component.point import Point
-from simulator.src.component.puzzle_piece_old import PuzzlePiece, PieceType
+from component.puzzle_piece import PuzzlePiece
 from component.draw_puzzle_piece import render_puzzle_piece
 
 
@@ -70,11 +70,14 @@ def main() -> None:
 
     print(f"Loaded {len(pieces)} corner pieces from {json_path}")
     for name, piece in pieces.items():
-        print(f"{name}: type={piece.type}, vertices={len(piece.polygon.vertices)}, area={piece.polygon.area():.2f}, perimeter={piece.polygon.perimeter():.2f}, centroid={piece.polygon.centroid()}")
+        print(
+            f"{name}: type={piece.type}, vertices={len(piece.polygon.vertices)}, area={piece.polygon.area():.2f}, perimeter={piece.polygon.perimeter():.2f}, centroid={piece.polygon.centroid()}"
+        )
         img = render_puzzle_piece(piece, scale=0.5, margin=50)
         cv2.imshow(name, img)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
     main()
