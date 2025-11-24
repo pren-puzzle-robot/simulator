@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import math
+import cv2
 
 from component import PuzzlePiece, Point
+from component.draw_puzzle_piece import render_puzzle_piece
 from utilities import load_pieces
 
 ERROR_MARCHING_LENGTH: float = 0.05
@@ -20,6 +22,14 @@ def main() -> None:
     index: int = next(i for i, p in PUZZLE.items() if p.is_corner)
     direction: bool = True
     origin: tuple[int, bool] = (index, direction)
+
+    img = render_puzzle_piece(PUZZLE[origin[0]], scale=0.5, margin=50)
+    cv2.imshow(f"{1}. Piece", img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    print([x.get_indices for x in PUZZLE[1].outer_edges])
+    print(PUZZLE[1].get_limits())
 
     # i: int = 1
     remaining_edges: list[int] = [k for k in PUZZLE if k != index]
@@ -62,13 +72,14 @@ def _find_matching_puzzle_piece(
         # current points and edges for origin
         o_index = o_start + i * o_dir
         o_points = origin_piece.get_triplet(o_index, o_direction)
-        for m_piece, m_dir in prev_remaining:
+        for m_piece, m_direction in prev_remaining:
             # current points and edges for a potential match
             match = PUZZLE[m_piece]
             m_limits = match.get_limits()
-            m_start = m_limits[0] if m_dir else m_limits[1]
+            m_start = m_limits[0] if m_direction else m_limits[1]
+            m_dir = 1 if m_direction else -1
             m_index = m_start + i * m_dir
-            m_points = match.get_triplet(m_index, m_dir)
+            m_points = match.get_triplet(m_index, m_direction)
 
             # result of the matching
             matching = (
@@ -79,7 +90,7 @@ def _find_matching_puzzle_piece(
 
             # remove from pool if it does not fit
             if not matching:
-                curr_remaining.remove((m_piece, m_dir))
+                curr_remaining.remove((m_piece, m_direction))
 
         if len(curr_remaining) == 0:
             # in this round the remaining pieces droped out

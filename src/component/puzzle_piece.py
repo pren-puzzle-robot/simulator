@@ -116,9 +116,9 @@ class PuzzlePiece:
         end = (best_start + best_len) % length
 
         result = (start, end)
-
         if start > end:
             result = (end, start)
+
         return result
 
     @property
