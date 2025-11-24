@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import math
-import cv2
 
 from component import PuzzlePiece, Point
-from component.draw_puzzle_piece import render_puzzle_piece
 from utilities import load_pieces
 
 ERROR_MARCHING_LENGTH: float = 0.05
@@ -23,34 +21,25 @@ def main() -> None:
     direction: bool = True
     origin: tuple[int, bool] = (index, direction)
 
+    # i: int = 1
     remaining_edges: list[int] = [k for k in PUZZLE if k != index]
 
-    i: int = 1
+    # img = render_puzzle_piece(PUZZLE[origin[0]], scale=0.5, margin=50)
+    # cv2.imshow(f"{i}. Piece", img)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
 
-    img = render_puzzle_piece(PUZZLE[origin[0]], scale=0.5, margin=50)
-    cv2.imshow(f"{i}. Piece", img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    result = _find_matching_puzzle_piece(origin, remaining_edges)
 
-    while len(remaining_edges) != 0:
-        i += 1
-        indecies, possible_matches = _find_matching_puzzle_piece(
-            origin, remaining_edges
-        )
-        while len(possible_matches) > 0:
-            origin = possible_matches.pop()
-            remaining_edges.remove(origin[0])
-            origin = (origin[0], not origin[1])
-
-            img = render_puzzle_piece(PUZZLE[origin[0]], scale=0.5, margin=50)
-            cv2.imshow(f"{i}. Piece", img)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
+    if result is not None:
+        print(result)
+    else:
+        print("ERROR")
 
 
 def _find_matching_puzzle_piece(
     origin: tuple[int, bool], remaining: list[int]
-) -> tuple[tuple[int, int], list[tuple[int, bool]]]:
+) -> list[tuple[tuple[int, int], tuple[int, bool]]] | None:
     # flip-flopping list of remaining matches
     prev_remaining: list[tuple[int, bool]] = [(n, True) for n in remaining] + [
         (n, False) for n in remaining
@@ -66,7 +55,7 @@ def _find_matching_puzzle_piece(
     o_dir: int = 1 if o_direction else -1
 
     # default solution to be overritten
-    this_edge: tuple[int, int] = (o_start, 0)
+    this_edge: tuple[int, int] = (o_start, o_start)
     next_edges: list[tuple[int, bool]] = []
 
     for i in range(0, o_length):
@@ -102,8 +91,43 @@ def _find_matching_puzzle_piece(
         # shuffel remaining pieces into the upcoming pool
         prev_remaining = curr_remaining.copy()
 
-    # return all the edges that matched this edge
-    return (this_edge, next_edges)
+    # how to handle recursion
+
+    # Failure: not a single Segment could match
+    if (
+        next_edges == remaining and this_edge[1] == o_start - 1 * o_dir
+    ):  # could not complete a single loop
+        return None
+
+    if (
+        len(next_edges) > 1
+    ):  # multiple solutions -> test each one and return the first that went all the way
+        for next_piece, next_dir in next_edges:
+            next_edge = (next_piece, not next_dir)
+            next_remaining = remaining.copy()
+            next_remaining.remove(next_piece)
+            temp_result = _find_matching_puzzle_piece(next_edge, next_remaining)
+
+            if temp_result is not None:
+                temp_result.insert(0, (this_edge, next_edge))
+                return temp_result
+    elif len(next_edges) == 1:  # one possible next piece, easy solution
+        next_piece, next_dir = next_edges.pop()
+        next_edge = (next_piece, not next_dir)
+        next_remaining = remaining.copy()
+        next_remaining.remove(next_piece)
+
+        if len(next_remaining) == 0:  # we succeeded
+            return [(this_edge, next_edge)]
+
+        temp_result = _find_matching_puzzle_piece(next_edge, next_remaining)
+        if temp_result is not None:
+            temp_result.insert(0, (this_edge, next_edge))
+            return temp_result
+
+        return None
+
+    return None
 
 
 def _first_segment_matches(
