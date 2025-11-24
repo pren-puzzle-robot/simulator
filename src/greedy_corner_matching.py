@@ -37,7 +37,7 @@ def main() -> None:
         indecies, possible_matches = _find_matching_puzzle_piece(
             origin, remaining_edges
         )
-        if len(possible_matches) == 1:
+        while len(possible_matches) > 0:
             origin = possible_matches.pop()
             remaining_edges.remove(origin[0])
             origin = (origin[0], not origin[1])
