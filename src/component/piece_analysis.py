@@ -37,6 +37,32 @@ class OuterEdge:
     def get_indices(self) -> tuple[int, int]:
         """Return the indices of the outeredge."""
         return (self.i, self.j)
+    
+    def rotated(self, angle_rad: float, center: Point) -> OuterEdge:
+        """Return a new OuterEdge rotated around center by angle_rad."""
+        def rotate_point(p: Point, angle: float, center: Point) -> Point:
+            s = math.sin(angle)
+            c = math.cos(angle)
+
+            # translate point back to origin:
+            p_translated_x = p.x - center.x
+            p_translated_y = p.y - center.y
+
+            # rotate point
+            x_new = p_translated_x * c - p_translated_y * s
+            y_new = p_translated_x * s + p_translated_y * c
+
+            # translate point back:
+            x_final = x_new + center.x
+            y_final = y_new + center.y
+
+            return Point(x_final, y_final)
+
+        new_p1 = rotate_point(self.p1, angle_rad, center)
+        new_p2 = rotate_point(self.p2, angle_rad, center)
+        new_length = math.hypot(new_p2.x - new_p1.x, new_p2.y - new_p1.y)
+
+        return OuterEdge(i=self.i, j=self.j, p1=new_p1, p2=new_p2, length=new_length)
 
 
 @dataclass

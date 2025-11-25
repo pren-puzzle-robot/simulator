@@ -120,6 +120,12 @@ class PuzzlePiece:
             result = (end, start)
 
         return result
+    
+    def rotate(self, angle_rad: float) -> None:
+        """Rotate the puzzle piece polygon by the given angle in radians."""
+        self._polygon.rotate(angle_rad)
+
+        self._outer_edges = [ edge.rotated(angle_rad, self.polygon.centroid()) for edge in self._outer_edges ]
 
     @property
     def polygon(self) -> Polygon:
