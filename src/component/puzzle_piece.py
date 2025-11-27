@@ -20,11 +20,14 @@ class PuzzlePiece:
     _type: PieceType
     _outer_edges: List[OuterEdge]
 
+    _rotation: float = 0.0  # in radians
+
     def __init__(self, points: Iterable[Point]) -> None:
         points_list: List[Point] = list(points)
         if len(points_list) < 3:
             raise ValueError("PuzzlePiece requires at least 3 points")
 
+        self._translation: tuple[float, float] = (0.0, 0.0)
         self._polygon = Polygon(points_list)
 
         # First analysis
@@ -120,6 +123,24 @@ class PuzzlePiece:
             result = (end, start)
 
         return result
+    
+    def rotate(self, angle_rad: float) -> None:
+        """Rotate the puzzle piece polygon by the given angle in radians."""
+        self._rotation += angle_rad
+
+        self._polygon.rotate(angle_rad)
+        self._outer_edges = [ edge.rotated(angle_rad, self.polygon.centroid()) for edge in self._outer_edges ]
+
+    def translate(self, from_point: Point, to_point: Point) -> None:
+        """Translate the puzzle piece so that from_point moves to to_point."""
+        dx = to_point.x - from_point.x
+        dy = to_point.y - from_point.y
+
+        self._translation= (self._translation[0] + dx, self._translation[1] + dy)
+        print("Translation:", self._translation)
+
+        self._polygon.translate(dx, dy)
+        self._outer_edges = [ edge.translated(dx, dy) for edge in self._outer_edges ]
 
     @property
     def polygon(self) -> Polygon:
@@ -141,6 +162,16 @@ class PuzzlePiece:
     @property
     def is_edge(self) -> bool:
         return self._type == PieceType.EDGE
+    
+    @property
+    def rotation(self) -> float:
+        """Get the current rotation of the puzzle piece in radians."""
+        return self._rotation
+    
+    @property
+    def translation(self) -> tuple[float, float]:
+        """Get the current translation (dx, dy) of the puzzle piece."""
+        return self._translation
 
     def __repr__(self) -> str:
         return f"PuzzlePiece(type={self._type.value!r}, polygon={self._polygon!r})"

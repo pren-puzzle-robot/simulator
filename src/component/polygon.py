@@ -82,7 +82,7 @@ class Polygon:
     def rotated(self, angle_radians: float, origin: Optional[Point] = None) -> Polygon:
         """Return a new rotated polygon."""
         if origin is None:
-            origin = Point(0.0, 0.0)
+            origin = self.centroid()
 
         ox, oy = origin.x, origin.y
         c = math.cos(angle_radians)
