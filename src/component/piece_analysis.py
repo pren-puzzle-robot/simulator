@@ -63,7 +63,15 @@ class OuterEdge:
         new_length = math.hypot(new_p2.x - new_p1.x, new_p2.y - new_p1.y)
 
         return OuterEdge(i=self.i, j=self.j, p1=new_p1, p2=new_p2, length=new_length)
+    
+    def translated(self, dx: float, dy: float) -> OuterEdge:
+        """Return a new OuterEdge translated by (dx, dy)."""
+        new_p1 = Point(self.p1.x + dx, self.p1.y + dy)
+        new_p2 = Point(self.p2.x + dx, self.p2.y + dy)
+        return OuterEdge(i=self.i, j=self.j, p1=new_p1, p2=new_p2, length=self.length)
 
+    def __repr__(self):
+        return f"OuterEdge(i={self.i}, j={self.j}, length={self.length:.2f}, \n\tp1={self.p1}, \n\tp2={self.p2})"
 
 @dataclass
 class PieceAnalysis:
