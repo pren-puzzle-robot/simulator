@@ -23,6 +23,12 @@ def _to_img_coords(
     y = int((p.y - ymin) * scale) + margin
     return x, y
 
+def render_and_show_puzzle_piece(piece: PuzzlePiece) -> None:
+    """Render and display the puzzle piece using OpenCV."""
+    img = render_puzzle_piece(piece, scale=0.5, margin=50)
+    cv2.imshow("Puzzle Piece", img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 def render_puzzle_piece(
     piece: PuzzlePiece,
