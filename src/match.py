@@ -124,7 +124,25 @@ def move_pieces_to_fit(order: list[int], pieces: dict[int, PuzzlePiece]) -> None
         # Get the first outer edge of the next piece
         next_edge = next_piece.outer_edges[0]
 
-        next_piece.translate(next_edge.p1, current_edge.p2)   
+        MARGIN = 10.0 # margin between pieces
+
+        # direction vector along the current edge
+        dx = current_edge.p2.x - current_edge.p1.x
+        dy = current_edge.p2.y - current_edge.p1.y
+
+        # normalize
+        length = math.hypot(dx, dy)
+        ux = dx / length
+        uy = dy / length
+
+        # target point = p2 + margin along the direction
+        target = Point(
+            current_edge.p2.x + ux * MARGIN,
+            current_edge.p2.y + uy * MARGIN
+        )
+
+        next_piece.translate(next_edge.p1, target)
+
 
 def print_puzzle_image(pieces: dict[int, PuzzlePiece]) -> None:
     """Renders and prints the full puzzle image from the pieces."""
