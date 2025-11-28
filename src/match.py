@@ -19,7 +19,7 @@ def rotate_first_corner(puzzlePiece: PuzzlePiece) -> None:
     """Rotates the first corner piece to point down horizontally."""
 
     # Rotates the polygon so that the last outer edge is at the bottom
-    bottom_edge = puzzlePiece.outer_edges[-1]
+    bottom_edge = puzzlePiece.outer_edge.edges[-1]
     # Calculate the angle of the bottom edge
     dx = bottom_edge.p2.x - bottom_edge.p1.x
     dy = bottom_edge.p2.y - bottom_edge.p1.y
@@ -46,7 +46,7 @@ def main() -> None:
 
     move_pieces_to_fit(order, PUZZLE)
 
-    print("Outer edges after moving:", "\n\n".join(str(PUZZLE[pid].outer_edges) for pid in order))
+    print("Outer edges after moving:", "\n\n".join(str(PUZZLE[pid].outer_edge.edges) for pid in order))
 
     print_whole_puzzle_image(PUZZLE)
 
@@ -102,16 +102,16 @@ def move_pieces_to_fit(order: list[int], pieces: dict[int, PuzzlePiece]) -> None
     """Moves pieces in the order to form an A5 size image."""
 
     first_piece = pieces[order[0]]
-    first_piece.translate(first_piece.outer_edges[-1].p1, Point(0, 0))
+    first_piece.translate(first_piece.outer_edge.edges[-1].p1, Point(0, 0))
 
     for idx in range(1, len(order)):
         current_piece = pieces[order[idx - 1]]
         next_piece = pieces[order[idx]]
 
         # Get the last outer edge of the current piece
-        current_edge = current_piece.outer_edges[-1]
+        current_edge = current_piece.outer_edge.edges[-1]
         # Get the first outer edge of the next piece
-        next_edge = next_piece.outer_edges[0]
+        next_edge = next_piece.outer_edge.edges[0]
 
         MARGIN = 10.0 # margin between pieces
 
@@ -136,8 +136,8 @@ def move_pieces_to_fit(order: list[int], pieces: dict[int, PuzzlePiece]) -> None
 
 def get_amount_of_matching_points(current: PuzzlePiece, next_piece: PuzzlePiece) -> int:
     """Calculates the amount of matching points between two puzzle pieces."""
-    current_piece_index = current.outer_edges[-1].j
-    next_piece_index = next_piece.outer_edges[0].i
+    current_piece_index = current.outer_edge.edges[-1].j
+    next_piece_index = next_piece.outer_edge.edges[0].i
 
     max_steps = min(len(current.polygon.vertices), len(next_piece.polygon.vertices))
     steps = 0
@@ -189,10 +189,10 @@ def get_amount_of_matching_points(current: PuzzlePiece, next_piece: PuzzlePiece)
 def rotate_to_fit(puzzle_piece: PuzzlePiece, piece: PuzzlePiece) -> PuzzlePiece:
     """Rotates a puzzle piece to fit the current puzzle piece."""
     # Get the last outer edge of the current puzzle piece
-    current_edge = puzzle_piece.outer_edges[-1]
+    current_edge = puzzle_piece.outer_edge.edges[-1]
 
     # Get the first outer edge of the new piece
-    new_edge = piece.outer_edges[0]
+    new_edge = piece.outer_edge.edges[0]
 
     # Calculate the angle of the current edge
     dx1 = current_edge.p2.x - current_edge.p1.x

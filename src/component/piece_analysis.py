@@ -22,10 +22,9 @@ class PieceType(str, Enum):
     CORNER = "corner"
     EDGE = "edge"  # default if not clearly a corner
 
-
 @dataclass
-class OuterEdge:
-    """Outer edge of a piece, expressed in terms of polygon vertex indices."""
+class Edge:
+    """Edge of a piece, expressed in terms of polygon vertex indices."""
 
     i: int  # start vertex index
     j: int  # end vertex index (wrapped)
@@ -37,9 +36,9 @@ class OuterEdge:
     def get_indices(self) -> tuple[int, int]:
         """Return the indices of the outeredge."""
         return (self.i, self.j)
-    
+
     def rotated(self, angle_rad: float, center: Point) -> OuterEdge:
-        """Return a new OuterEdge rotated around center by angle_rad."""
+        """Return a new Edge rotated around center by angle_rad."""
         def rotate_point(p: Point, angle: float, center: Point) -> Point:
             s = math.sin(angle)
             c = math.cos(angle)
@@ -62,16 +61,38 @@ class OuterEdge:
         new_p2 = rotate_point(self.p2, angle_rad, center)
         new_length = math.hypot(new_p2.x - new_p1.x, new_p2.y - new_p1.y)
 
-        return OuterEdge(i=self.i, j=self.j, p1=new_p1, p2=new_p2, length=new_length)
+        return Edge(i=self.i, j=self.j, p1=new_p1, p2=new_p2, length=new_length)
+    
+    def translated(self, dx: float, dy: float) -> Edge:
+        """Return a new Edge translated by (dx, dy)."""
+        new_p1 = Point(self.p1.x + dx, self.p1.y + dy)
+        new_p2 = Point(self.p2.x + dx, self.p2.y + dy)
+        return Edge(i=self.i, j=self.j, p1=new_p1, p2=new_p2, length=self.length)
+
+    def __repr__(self):
+        return f"Edge(i={self.i}, j={self.j}, length={self.length:.2f}, \n\tp1={self.p1}, \n\tp2={self.p2})"
+    
+
+@dataclass
+class OuterEdge:
+    """Outer edge of a piece, expressed in terms of polygon vertex indices."""
+
+    type: PieceType
+    edges: List[Edge]
+
+    def rotated(self, angle_rad: float, center: Point) -> OuterEdge:
+        """Return a new OuterEdge rotated around center by angle_rad."""
+        rotated_edges = [edge.rotated(angle_rad, center) for edge in self.edges]
+        return OuterEdge(edges=rotated_edges)
     
     def translated(self, dx: float, dy: float) -> OuterEdge:
         """Return a new OuterEdge translated by (dx, dy)."""
-        new_p1 = Point(self.p1.x + dx, self.p1.y + dy)
-        new_p2 = Point(self.p2.x + dx, self.p2.y + dy)
-        return OuterEdge(i=self.i, j=self.j, p1=new_p1, p2=new_p2, length=self.length)
+        translated_edges = [edge.translated(dx, dy) for edge in self.edges]
+        return OuterEdge(edges=translated_edges)
 
-    def __repr__(self):
-        return f"OuterEdge(i={self.i}, j={self.j}, length={self.length:.2f}, \n\tp1={self.p1}, \n\tp2={self.p2})"
+    def __init__(self, edges: List[Edge]) -> None:
+        self.edges = edges
+        self.type = PieceType.EDGE if len(edges) == 1 else PieceType.CORNER
 
 @dataclass
 class PieceAnalysis:
@@ -98,10 +119,10 @@ def _angle_between(v1: np.ndarray, v2: np.ndarray) -> float:
     return a
 
 
-def _edges_from_polygon(poly: Polygon) -> List[OuterEdge]:
+def _edges_from_polygon(poly: Polygon) -> List[Edge]:
     verts_raw = list(poly.vertices)
     n = len(verts_raw)
-    edges: List[OuterEdge] = []
+    edges: List[Edge] = []
 
     for i in range(n):
         j = (i + 1) % n
@@ -110,48 +131,43 @@ def _edges_from_polygon(poly: Polygon) -> List[OuterEdge]:
         p1 = Point(x1, y1)
         p2 = Point(x2, y2)
         length = _seg_len((x1, y1), (x2, y2))
-        edges.append(OuterEdge(i=i, j=j, p1=p1, p2=p2, length=length))
+        edges.append(Edge(i=i, j=j, p1=p1, p2=p2, length=length))
 
     return edges
 
 
-def analyze_polygon(poly: Polygon) -> PieceAnalysis:
+def analyze_polygon(poly: Polygon) -> List[OuterEdge]:
     """
-    Decide if a polygon is a corner or an edge piece and return the outer edge(s).
+    Find all candidate outer-edge options for a piece.
 
-    Rules:
-    - If two long edges share a vertex and form a suitable angle -> CORNER (2 edges).
-    - Else -> EDGE with one best outer edge.
-      * If there are "long" edges, take the longest one.
-      * If not, just take the globally longest edge.
+    - Corner piece -> each option is an OuterEdge with two Edges (corner).
+    - Edge piece   -> each option is an OuterEdge with one Edge.
     """
     edges = _edges_from_polygon(poly)
     if not edges:
-        # In practice should not happen (Polygon requires >=3 vertices),
-        # but we still return something valid.
-        return PieceAnalysis(piece_type=PieceType.EDGE, outer_edges=[])
+        return []
 
     lengths = np.array([e.length for e in edges], dtype=float)
     Lmax = float(lengths.max())
     Lmed = float(np.median(lengths))
 
-    # candidate long edges
-    long_edges: List[OuterEdge] = [
+    # long edge candidates (same idea as before)
+    long_edges: List[Edge] = [
         e
         for e in edges
         if e.length >= max(LONG_EDGE_VS_MEDIAN * Lmed, LONG_EDGE_VS_MAX * Lmax)
     ]
 
-    # Try to find a corner (two long edges sharing a vertex with angle in range)
-    best_pair: tuple[OuterEdge, OuterEdge] | None = None
-    best_sum = -1.0
+    corner_candidates: List[OuterEdge] = []
 
-    for a in long_edges:
-        for b in long_edges:
-            if a is b:
-                continue
+    for idx_a, a in enumerate(long_edges):
+        for idx_b, b in enumerate(long_edges):
+            if idx_b <= idx_a:
+                continue  # avoid (a,b) and (b,a) duplicates and self-pair
 
             shared_idx = None
+
+            # we also define pa, pb as vectors pointing away from the shared vertex
             if a.i == b.j:
                 shared_idx = a.i
                 pa = np.array([a.p2.x - a.p1.x, a.p2.y - a.p1.y])
@@ -174,33 +190,29 @@ def analyze_polygon(poly: Polygon) -> PieceAnalysis:
 
             ang = _angle_between(pa, pb)
             if CORNER_ANGLE_RANGE[0] <= ang <= CORNER_ANGLE_RANGE[1]:
-                s = a.length + b.length
-                if s > best_sum:
-                    best_sum = s
-                    best_pair = (a, b)
+                # order edges so that they follow each other around the polygon
+                if a.j == b.i:
+                    ordered = [a, b]
+                elif b.j == a.i:
+                    ordered = [b, a]
+                else:
+                    ordered = [a, b]  # ambiguous but still a valid pair
 
-    # Corner case found
-    if best_pair is not None:
-        e1, e2 = best_pair
-        if e1.j == e2.i:
-            ordered = [e1, e2]
-        elif e2.j == e1.i:
-            ordered = [e2, e1]
-        else:
-            ordered = [e1, e2]
-        return PieceAnalysis(
-            piece_type=PieceType.CORNER,
-            outer_edges=ordered,
+                corner_candidates.append(OuterEdge(edges=ordered))
+
+    # If we found any corner candidates, treat this as a corner piece
+    if corner_candidates:
+        # sort by total length descending
+        corner_candidates.sort(
+            key=lambda oe: sum(e.length for e in oe.edges),
+            reverse=True,
         )
+        return corner_candidates
 
-    # No corner: it is an edge piece.
-    # Prefer a long edge if available, otherwise just take the longest edge.
+    # ---------- Edge piece: give all single-edge options ----------
     if long_edges:
-        best_edge = max(long_edges, key=lambda x: x.length)
+        candidate_edges = sorted(long_edges, key=lambda e: e.length, reverse=True)
     else:
-        best_edge = max(edges, key=lambda x: x.length)
+        candidate_edges = sorted(edges, key=lambda e: e.length, reverse=True)
 
-    return PieceAnalysis(
-        piece_type=PieceType.EDGE,
-        outer_edges=[best_edge],
-    )
+    return [OuterEdge(edges=[e]) for e in candidate_edges]
