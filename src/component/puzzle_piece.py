@@ -21,6 +21,7 @@ class PuzzlePiece:
     _outer_edges: List[OuterEdge]
 
     _rotation: float = 0.0  # in radians
+    _translation: tuple[float, float] = (0.0, 0.0)
 
     def __init__(self, points: Iterable[Point]) -> None:
         points_list: List[Point] = list(points)
