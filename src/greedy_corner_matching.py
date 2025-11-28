@@ -18,11 +18,6 @@ PUZZLE: dict[int, PuzzlePiece] = load_pieces()
 def main() -> None:
     """greedy matching"""
 
-    # get the first corner piece
-    index: int = next(i for i, p in PUZZLE.items() if p.is_corner)
-    direction: bool = True
-    origin: tuple[int, bool] = (index, direction)
-
     img = render_puzzle_piece(PUZZLE[origin[0]], scale=0.5, margin=50)
     cv2.imshow(f"{1}. Piece", img)
     cv2.waitKey(0)
@@ -32,14 +27,11 @@ def main() -> None:
     print(PUZZLE[1].get_limits())
 
     # i: int = 1
-    remaining_edges: list[int] = [k for k in PUZZLE if k != index]
 
     # img = render_puzzle_piece(PUZZLE[origin[0]], scale=0.5, margin=50)
     # cv2.imshow(f"{i}. Piece", img)
     # cv2.waitKey(0)
     # cv2.destroyAllWindows()
-
-    result = _find_matching_puzzle_piece(origin, remaining_edges)
 
     if result is not None:
         print(result)
@@ -47,9 +39,19 @@ def main() -> None:
         print("ERROR")
 
 
-def _find_matching_puzzle_piece(
+def _pick_first_puzzle_piece() -> list[tuple[int, tuple[int, int]]] | None:
+    # get the first corner piece
+    index: int = next(i for i, p in PUZZLE.items() if p.is_corner)
+    direction: bool = True
+    origin: tuple[int, bool] = (index, direction)
+    remaining_edges: list[int] = [k for k in PUZZLE if k != index]
+
+    return _find_next_matching_puzzle_piece(origin, remaining_edges)
+
+
+def _find_next_matching_puzzle_piece(
     origin: tuple[int, bool], remaining: list[int]
-) -> list[tuple[tuple[int, int], tuple[int, bool]]] | None:
+) -> list[tuple[int, tuple[int, int]]] | None:
     # flip-flopping list of remaining matches
     prev_remaining: list[tuple[int, bool]] = [(n, True) for n in remaining] + [
         (n, False) for n in remaining
@@ -117,10 +119,12 @@ def _find_matching_puzzle_piece(
             next_edge = (next_piece, not next_dir)
             next_remaining = remaining.copy()
             next_remaining.remove(next_piece)
-            temp_result = _find_matching_puzzle_piece(next_edge, next_remaining)
+            temp_result = _find_next_matching_puzzle_piece(next_edge, next_remaining)
 
             if temp_result is not None:
-                temp_result.insert(0, (this_edge, next_edge))
+                next_match = (next_edge[0],)
+                this_match = (origin[0], this_edge)
+                temp_result.insert(0, this_match)
                 return temp_result
     elif len(next_edges) == 1:  # one possible next piece, easy solution
         next_piece, next_dir = next_edges.pop()
@@ -131,7 +135,7 @@ def _find_matching_puzzle_piece(
         if len(next_remaining) == 0:  # we succeeded
             return [(this_edge, next_edge)]
 
-        temp_result = _find_matching_puzzle_piece(next_edge, next_remaining)
+        temp_result = _find_next_matching_puzzle_piece(next_edge, next_remaining)
         if temp_result is not None:
             temp_result.insert(0, (this_edge, next_edge))
             return temp_result
