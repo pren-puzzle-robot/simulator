@@ -22,7 +22,7 @@ class Polygon:
     def vertices(self) -> List[Point]:
         return list(self._vertices)
 
-    def edges(self):
+    def edges(self) -> List[tuple[Point, Point]]:
         """Return list of (Point, Point) edges in order, wrapping around."""
         v = self._vertices
         return [(v[i], v[(i + 1) % len(v)]) for i in range(len(v))]
@@ -79,8 +79,8 @@ class Polygon:
         """Translate polygon in-place."""
         self._vertices = [Point(p.x + dx, p.y + dy) for p in self._vertices]
 
-    def rotated(self, angle_radians: float, origin: Optional[Point] = None) -> Polygon:
-        """Return a new rotated polygon."""
+    def rotate(self, angle_radians: float, origin: Optional[Point] = None) -> None:
+        """Rotate polygon in-place."""
         if origin is None:
             origin = self.centroid()
 
@@ -95,13 +95,8 @@ class Polygon:
             rx = tx * c - ty * s + ox
             ry = tx * s + ty * c + oy
             new_vertices.append(Point(rx, ry))
-
-        return Polygon(new_vertices)
-
-    def rotate(self, angle_radians: float, origin: Optional[Point] = None) -> None:
-        """Rotate polygon in-place."""
-        rotated_polygon = self.rotated(angle_radians, origin)
-        self._vertices = rotated_polygon._vertices
+        
+        self._vertices = new_vertices
 
     def __len__(self) -> int:
         return len(self._vertices)
