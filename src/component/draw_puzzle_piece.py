@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import math
 from typing import Tuple
+import random
 
 import cv2
 import numpy as np
+from PIL import Image, ImageDraw, ImageFont
 
 from .puzzle_piece import PuzzlePiece
 from .point import Point
@@ -103,3 +106,46 @@ def render_puzzle_piece(
     )
 
     return img
+
+def print_whole_puzzle_image(pieces: dict[int, PuzzlePiece]) -> None:
+    """Renders and prints the full puzzle image from the pieces."""
+    all_points = []
+    for piece in pieces.values():
+        all_points.extend(piece.polygon.vertices)
+
+    # Determine bounding box
+    max_x = max(p.x for p in all_points)
+    max_y = max(p.y for p in all_points)
+
+    width = int(math.ceil(max_x))
+    height = int(math.ceil(max_y))
+
+    # Transparent background
+    img = Image.new("RGBA", (width, height), (255, 0, 0, 255))
+    draw = ImageDraw.Draw(img)
+
+    # Deterministic color per piece name
+    def color_for_name(piece_id):
+        # fixed seed based on name for stable colors
+        rnd = random.Random(hash(piece_id) & 0xFFFFFFFF)
+        r = rnd.randint(50, 230)
+        g = rnd.randint(50, 230)
+        b = rnd.randint(50, 230)
+        return (r, g, b, 255)
+
+    # Render each polygon onto the image
+    for pid, piece in pieces.items():
+        outline = color_for_name(pid)
+        fill = (outline[0], outline[1], outline[2], 40)  # very light transparent fill
+
+        # Filled polygon with colored border
+        draw.polygon([(p.x, p.y) for p in piece.polygon.vertices], fill=fill, outline=outline)
+
+        cx, cy = piece.polygon.centroid().x, piece.polygon.centroid().y
+        r = 5
+        draw.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(0, 0, 0, 255))
+
+        label = "Piece {}\nRotation: {:.2f}\nTranslation: ({:.2f}, {:.2f})".format(pid, piece.rotation, piece.translation[0], piece.translation[1])
+        draw.text((piece.polygon.centroid().x, piece.polygon.centroid().y), text=label, font=ImageFont.load_default(size=30))
+
+    img.show()

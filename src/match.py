@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import math
-import random
-from PIL import Image, ImageDraw, ImageFont
 import cv2
 from matplotlib.pyplot import draw
 import numpy as np
 
 from component import PuzzlePiece, Point
-from component.draw_puzzle_piece import render_and_show_puzzle_piece
+from component.draw_puzzle_piece import render_and_show_puzzle_piece, print_whole_puzzle_image
 from utilities import load_pieces
 from utilities.puzzle_piece_loader import PuzzlePieceLoader
 
@@ -50,7 +48,7 @@ def main() -> None:
 
     print("Outer edges after moving:", "\n\n".join(str(PUZZLE[pid].outer_edges) for pid in order))
 
-    print_puzzle_image(PUZZLE)
+    print_whole_puzzle_image(PUZZLE)
 
 
 def solve_greedily(start_id: int, pieces: dict[int, PuzzlePiece]) -> list[int]:
@@ -133,50 +131,6 @@ def move_pieces_to_fit(order: list[int], pieces: dict[int, PuzzlePiece]) -> None
         )
 
         next_piece.translate(next_edge.p1, target)
-
-
-def print_puzzle_image(pieces: dict[int, PuzzlePiece]) -> None:
-    """Renders and prints the full puzzle image from the pieces."""
-    all_points = []
-    for piece in pieces.values():
-        all_points.extend(piece.polygon.vertices)
-
-    # Determine bounding box
-    max_x = max(p.x for p in all_points)
-    max_y = max(p.y for p in all_points)
-
-    width = int(math.ceil(max_x))
-    height = int(math.ceil(max_y))
-
-    # Transparent background
-    img = Image.new("RGBA", (width, height), (255, 0, 0, 255))
-    draw = ImageDraw.Draw(img)
-
-    # Deterministic color per piece name
-    def color_for_name(piece_id):
-        # fixed seed based on name for stable colors
-        rnd = random.Random(hash(piece_id) & 0xFFFFFFFF)
-        r = rnd.randint(50, 230)
-        g = rnd.randint(50, 230)
-        b = rnd.randint(50, 230)
-        return (r, g, b, 255)
-
-    # Render each polygon onto the image
-    for pid, piece in pieces.items():
-        outline = color_for_name(pid)
-        fill = (outline[0], outline[1], outline[2], 40)  # very light transparent fill
-
-        # Filled polygon with colored border
-        draw.polygon([(p.x, p.y) for p in piece.polygon.vertices], fill=fill, outline=outline)
-
-        cx, cy = piece.polygon.centroid().x, piece.polygon.centroid().y
-        r = 5
-        draw.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(0, 0, 0, 255))
-
-        label = "Piece {}\nRotation: {:.2f}\nTranslation: ({:.2f}, {:.2f})".format(pid, piece.rotation, piece.translation[0], piece.translation[1])
-        draw.text((piece.polygon.centroid().x, piece.polygon.centroid().y), text=label, font=ImageFont.load_default(size=30))
-
-    img.show()
          
 
 
