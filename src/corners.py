@@ -5,64 +5,110 @@ from math import acos, degrees
 from glob import glob
 import re
 
-def remove_collinear(pts, angle_thresh_deg=175):
-    """Drop nearly collinear points (angle close to 180°)."""
+def filter_by_turn_angle(pts, min_turn_deg=45.0):
+    """
+    Keep only points where the contour direction changes by at least `min_turn_deg`.
+
+    - pts: Nx1x2 contour from approxPolyDP
+    - min_turn_deg: minimum change between incoming and outgoing edge (in degrees)
+      Example: 45 => only corners with direction change >= 45 degrees.
+    """
+    pts = np.asarray(pts, dtype=np.int32)
     if len(pts) <= 3:
         return pts
+
     keep = []
-    for i in range(len(pts)):
-        p0 = pts[(i-1) % len(pts)][0]
-        p1 = pts[i][0]
-        p2 = pts[(i+1) % len(pts)][0]
-        v1, v2 = p0 - p1, p2 - p1
-        c = np.dot(v1, v2) / (np.linalg.norm(v1)*np.linalg.norm(v2) + 1e-9)
-        ang = degrees(acos(np.clip(c, -1, 1)))
-        if ang < angle_thresh_deg:
-            keep.append([p1])
+    n = len(pts)
+
+    for i in range(n):
+        p_prev = pts[(i - 1) % n][0]
+        p_cur  = pts[i][0]
+        p_next = pts[(i + 1) % n][0]
+
+        v1 = p_prev - p_cur
+        v2 = p_next - p_cur
+
+        # Skip degenerate vectors (duplicate or very close points)
+        if np.allclose(v1, 0) or np.allclose(v2, 0):
+            continue
+
+        denom = (np.linalg.norm(v1) * np.linalg.norm(v2) + 1e-9)
+        c = np.dot(v1, v2) / denom
+        c = np.clip(c, -1.0, 1.0)
+
+        ang = degrees(acos(c))     # interior angle in [0, 180]
+        turn = 180.0 - ang         # 0 = straight, bigger = sharper corner
+
+        if turn >= min_turn_deg:
+            keep.append([p_cur])
+
+    if not keep:
+        # If everything got filtered out (e.g. almost perfect circle),
+        # fall back to the original pts so you still see something.
+        return pts
+
     return np.array(keep, dtype=np.int32)
 
-def detect_corners(image_path, output_path="corners_output.png", approx_frac=0.002, angle_thresh=175):
+def detect_corners(
+    image_path,
+    output_path="corners_output.png",
+    approx_frac=0.002,
+    min_turn_deg=45.0
+):
     img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     if img is None:
-        print(f"⚠️ Error: could not open {image_path}")
+        print(f"Error: could not open {image_path}")
         return None
 
     # Threshold with Otsu
     _, bw = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
+    # Optional: make contours smoother / more robust on noisy edges
+    # bw = cv2.medianBlur(bw, 3)
+    # bw = cv2.morphologyEx(bw, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
+
     # Find contours (outer boundary)
     cnts, _ = cv2.findContours(bw, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     if not cnts:
-        print(f"⚠️ No contour found in {image_path}")
+        print(f"No contour found in {image_path}")
         return None
 
+    # Use the largest contour
     cnt = max(cnts, key=cv2.contourArea)
 
-    # Simplify contour
+    # Simplify contour geometry
     eps = approx_frac * cv2.arcLength(cnt, True)
     poly = cv2.approxPolyDP(cnt, eps, True)
-    poly = remove_collinear(poly, angle_thresh_deg=angle_thresh)
+
+    # Keep only real corners: turn >= min_turn_deg
+    corners = filter_by_turn_angle(poly, min_turn_deg=min_turn_deg)
 
     # Draw results
     color_img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-    cv2.drawContours(color_img, [poly], -1, (0, 255, 255), 2)
-    for i, p in enumerate(poly):
+    cv2.drawContours(color_img, [corners], -1, (0, 255, 255), 2)
+
+    for i, p in enumerate(corners):
         x, y = p[0]
         cv2.circle(color_img, (x, y), 6, (0, 0, 255), -1)
-        cv2.putText(color_img, str(i), (x + 8, y - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+        cv2.putText(color_img, str(i), (x + 8, y - 8),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
 
     cv2.imwrite(output_path, color_img)
-    print(f"✅ Saved {output_path} with {len(poly)} corners")
+    print(f"Saved {output_path} with {len(corners)} corners")
 
     # Return list of corners as (x, y)
-    return [(int(p[0][0]), int(p[0][1])) for p in poly]
+    return [(int(p[0][0]), int(p[0][1])) for p in corners]
 
 if __name__ == "__main__":
     # Default folder: current or specified
     src_folder = sys.argv[1] if len(sys.argv) >= 2 else "../output"
     output_json = os.path.join(src_folder, "corners.json")
 
-    print(f"📁 Scanning folder: {src_folder}")
+    # You can tweak these to tune robustness vs sensitivity:
+    approx_frac = 0.002   # bigger = more simplification
+    min_turn_deg = 30.0   # bigger = fewer corners, only sharp ones
+
+    print(f"Scanning folder: {src_folder}")
     images = [
         f for f in glob(os.path.join(src_folder, "piece_*.png"))
         if re.fullmatch(r".*piece_\d+\.png", f)
@@ -70,18 +116,23 @@ if __name__ == "__main__":
     results = {}
 
     if not images:
-        print("⚠️ No piece_*.png files found.")
+        print("No piece_*.png files found.")
         sys.exit(1)
 
     for img_path in images:
         filename = os.path.basename(img_path)
         name, ext = os.path.splitext(filename)
         out_path = os.path.join(src_folder, f"{name}_output{ext}")
-        corners = detect_corners(img_path, out_path)
+        corners = detect_corners(
+            img_path,
+            out_path,
+            approx_frac=approx_frac,
+            min_turn_deg=min_turn_deg
+        )
         if corners is not None:
             results[filename] = corners
 
     # Save all results to JSON
     with open(output_json, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
-    print(f"\n💾 Saved all corners to {output_json}")
+    print(f"\nSaved all corners to {output_json}")

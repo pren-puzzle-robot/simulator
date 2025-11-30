@@ -80,11 +80,10 @@ class OuterEdge:
         """Return the total length of the OuterEdge."""
         return sum(edge.length for edge in self.edges)
 
-    def rotated(self, angle_rad: float, center: Point) -> OuterEdge:
+    def rotate(self, angle_rad: float, center: Point) -> None:
         """Return a new OuterEdge rotated around center by angle_rad."""
-        rotated_edges = [edge.rotated(angle_rad, center) for edge in self.edges]
-        return OuterEdge(edges=rotated_edges)
-    
+        self.edges = [edge.rotated(angle_rad, center) for edge in self.edges]
+
     def translated(self, dx: float, dy: float) -> OuterEdge:
         """Return a new OuterEdge translated by (dx, dy)."""
         translated_edges = [edge.translated(dx, dy) for edge in self.edges]

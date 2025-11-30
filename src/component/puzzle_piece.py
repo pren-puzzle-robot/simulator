@@ -130,8 +130,8 @@ class PuzzlePiece:
         self._rotation += angle_rad
 
         self._polygon.rotate(angle_rad)
-        self._possible_outer_edges = [ edge.rotated(angle_rad, self.polygon.centroid()) for edge in self._possible_outer_edges ]
-        self._outer_edge = self.outer_edge.rotated(angle_rad, self.polygon.centroid())
+        for edge in self._possible_outer_edges:
+            edge.rotate(angle_rad, self.polygon.centroid())
 
     def translate(self, from_point: Point, to_point: Point) -> None:
         """Translate the puzzle piece so that from_point moves to to_point."""
