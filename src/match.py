@@ -213,15 +213,15 @@ def get_amount_of_matching_points(current: PuzzlePiece, next_piece: PuzzlePiece)
         else:
             # check if any of the next few points match
             found_better = False
-            for look_ahead in range(1, 4):
-                distance_ahead_1 = point_distance(current_piece_index, next_piece_index - look_ahead)
-                distance_ahead_2 = point_distance(current_piece_index + look_ahead, next_piece_index)
-                if distance_ahead_1 < 15.0 or distance_ahead_2 < 15.0:
-                    matching_points += 1
-                    current_piece_index += look_ahead + 1
-                    next_piece_index -= look_ahead + 1
-                    found_better = True
-                    break
+            # for look_ahead in range(1, 4):
+            #     distance_ahead_1 = point_distance(current_piece_index, next_piece_index - look_ahead)
+            #     distance_ahead_2 = point_distance(current_piece_index + look_ahead, next_piece_index)
+            #     if distance_ahead_1 < 15.0 or distance_ahead_2 < 15.0:
+            #         matching_points += 1
+            #         current_piece_index += look_ahead + 1
+            #         next_piece_index -= look_ahead + 1
+            #         found_better = True
+            #         break
             if not found_better:
                 break
 

@@ -49,41 +49,82 @@ def filter_by_turn_angle(pts, min_turn_deg=45.0):
 
     return np.array(keep, dtype=np.int32)
 
+def group_close_points(pts, min_dist=10):
+    """
+    Group points that lie closer than `min_dist` pixels and replace each
+    group with a single averaged point.
+
+    - pts: Nx1x2 or Nx2 array of points
+    - min_dist: distance threshold for grouping
+    """
+    pts = np.asarray(pts, dtype=np.float32)
+    if pts.ndim == 3:   # (N, 1, 2) from OpenCV contours
+        pts2 = pts[:, 0, :]  # -> (N, 2)
+    else:
+        pts2 = pts
+
+    n = len(pts2)
+    if n == 0:
+        return pts
+
+    used = np.zeros(n, dtype=bool)
+    new_points = []
+
+    for i in range(n):
+        if used[i]:
+            continue
+
+        # Start new group with point i
+        group = [pts2[i]]
+        used[i] = True
+
+        # Collect all points close to point i
+        for j in range(i + 1, n):
+            if used[j]:
+                continue
+            d = np.linalg.norm(pts2[j] - pts2[i])
+            if d < min_dist:
+                group.append(pts2[j])
+                used[j] = True
+
+        # Average coordinates in this group
+        mean_pt = np.mean(group, axis=0)
+        new_points.append(mean_pt)
+
+    new_points = np.round(np.array(new_points)).astype(np.int32)
+    # Return in contour format (N,1,2)
+    return new_points.reshape(-1, 1, 2)
+
+
 def detect_corners(
     image_path,
     output_path="corners_output.png",
     approx_frac=0.002,
-    min_turn_deg=45.0
+    min_turn_deg=45.0,
+    min_corner_dist=10  # minimal distance between corners in pixels
 ):
     img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     if img is None:
         print(f"Error: could not open {image_path}")
         return None
 
-    # Threshold with Otsu
     _, bw = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-    # Optional: make contours smoother / more robust on noisy edges
-    # bw = cv2.medianBlur(bw, 3)
-    # bw = cv2.morphologyEx(bw, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
-
-    # Find contours (outer boundary)
     cnts, _ = cv2.findContours(bw, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     if not cnts:
         print(f"No contour found in {image_path}")
         return None
 
-    # Use the largest contour
     cnt = max(cnts, key=cv2.contourArea)
 
-    # Simplify contour geometry
     eps = approx_frac * cv2.arcLength(cnt, True)
     poly = cv2.approxPolyDP(cnt, eps, True)
 
-    # Keep only real corners: turn >= min_turn_deg
+    # 1) Keep only strong turns
     corners = filter_by_turn_angle(poly, min_turn_deg=min_turn_deg)
 
-    # Draw results
+    # 2) Group corners that are too close to each other
+    corners = group_close_points(corners, min_dist=min_corner_dist)
+
     color_img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
     cv2.drawContours(color_img, [corners], -1, (0, 255, 255), 2)
 
@@ -96,8 +137,8 @@ def detect_corners(
     cv2.imwrite(output_path, color_img)
     print(f"Saved {output_path} with {len(corners)} corners")
 
-    # Return list of corners as (x, y)
     return [(int(p[0][0]), int(p[0][1])) for p in corners]
+
 
 if __name__ == "__main__":
     # Default folder: current or specified
