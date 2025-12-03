@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import math
-import cv2
 
-from component import PuzzlePiece, Point
-from component.draw_puzzle_piece import render_puzzle_piece
+from component import PuzzlePiece, Point, print_whole_puzzle_image
 from utilities import load_pieces
 
 ERROR_MARCHING_LENGTH: float = 0.05
@@ -18,13 +16,15 @@ PUZZLE: dict[int, PuzzlePiece] = load_pieces()
 def main() -> None:
     """greedy matching"""
 
-    img = render_puzzle_piece(PUZZLE[origin[0]], scale=0.5, margin=50)
-    cv2.imshow(f"{1}. Piece", img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # img = render_puzzle_piece(PUZZLE[origin[0]], scale=0.5, margin=50)
+    # cv2.imshow(f"{1}. Piece", img)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
 
-    print([x.get_indices for x in PUZZLE[1].outer_edges])
-    print(PUZZLE[1].get_limits())
+    # print([x.get_indices for x in PUZZLE[1].outer_edges])
+    # print(PUZZLE[1].get_limits())
+
+    result = solve_greedy_corner_matching()
 
     # i: int = 1
 
@@ -37,6 +37,71 @@ def main() -> None:
         print(result)
     else:
         print("ERROR")
+        return None
+
+    print_whole_puzzle_image(PUZZLE)
+
+    first_piece_id, first_edge = result.pop(0)
+    first_piece = PUZZLE[first_piece_id]
+    rotate_first_corner(first_piece)
+    first_piece.translate(first_piece.outer_edges[-1].p1, Point(0, 0))
+
+    previous_piece = first_piece
+    previous_edge = first_edge
+
+    for next_piece_id, next_edge in result:
+        current_piece = PUZZLE[next_piece_id]
+        current_piece.translate(current_piece.polygon.vertices[next_edge[0]], previous_piece.polygon.vertices[previous_edge[0]])
+        rotation = get_angle((previous_piece.polygon.vertices[previous_edge[0]], previous_piece.polygon.vertices[previous_edge[1]]), (current_piece.polygon.vertices[next_edge[0]], current_piece.polygon.vertices[next_edge[1]]))
+
+        print_whole_puzzle_image(PUZZLE)
+
+        break
+
+def get_angle(this_edge: tuple[Point, Point], next_edge: tuple[Point, Point]) -> float:
+    """Rotates a puzzle piece to fit the current puzzle piece."""
+    # Get the last outer edge of the current puzzle piece
+    #current_edge = puzzle_piece.outer_edges[-1]
+
+    # Get the first outer edge of the new piece
+    #new_edge = piece.outer_edges[0]
+
+    # Calculate the angle of the current edge
+    dx1 = this_edge[0].x - this_edge[1].x
+    dy1 = current_edge.p2.y - current_edge.p1.y
+    angle1 = math.atan2(dy1, dx1)
+
+    # Calculate the angle of the new edge
+    dx2 = new_edge.p2.x - new_edge.p1.x
+    dy2 = new_edge.p2.y - new_edge.p1.y
+    angle2 = math.atan2(dy2, dx2)
+
+    # Calculate the rotation needed to align the new edge with the current edge
+    rotation_needed = angle1 - angle2
+    piece.rotate(rotation_needed)
+    return piece
+    
+
+
+def rotate_first_corner(puzzlePiece: PuzzlePiece) -> None:
+    """Rotates the first corner piece to point down horizontally."""
+
+    # Rotates the polygon so that the last outer edge is at the bottom
+    bottom_edge = puzzlePiece.outer_edges[-1]
+    # Calculate the angle of the bottom edge
+    dx = bottom_edge.p2.x - bottom_edge.p1.x
+    dy = bottom_edge.p2.y - bottom_edge.p1.y
+    angle = math.atan2(dy, dx)
+    rotation_needed = -angle + math.pi / 2  # Rotate to point downwards
+    # Rotate all points in the polygon
+    puzzlePiece.rotate(rotation_needed)
+    pass
+
+
+def solve_greedy_corner_matching() -> list[tuple[int, tuple[int, int]]] | None:
+    """Greedy Corner Matching Algorithm"""
+
+    return _pick_first_puzzle_piece()
 
 
 def _pick_first_puzzle_piece() -> list[tuple[int, tuple[int, int]]] | None:
@@ -122,22 +187,51 @@ def _find_next_matching_puzzle_piece(
             temp_result = _find_next_matching_puzzle_piece(next_edge, next_remaining)
 
             if temp_result is not None:
-                next_match = (next_edge[0],)
-                this_match = (origin[0], this_edge)
+                this_match: tuple[int, tuple[int, int]] = (origin[0], this_edge)
+
+                edge_length: int = abs(this_edge[1] - this_edge[0]) + 1
+
+                next_puzzle_piece: PuzzlePiece = PUZZLE[next_piece]
+                next_limits: tuple[int, int] = next_puzzle_piece.get_limits()
+                next_start: int = next_limits[0] if next_dir else next_limits[1]
+                next_direction: int = 1 if next_dir else -1
+                next_last: int = next_start + (edge_length - 1) * next_direction
+
+                next_match: tuple[int, tuple[int, int]] = (
+                    next_piece,
+                    (next_start, next_last),
+                )
+
+                temp_result.insert(0, next_match)
                 temp_result.insert(0, this_match)
                 return temp_result
+
     elif len(next_edges) == 1:  # one possible next piece, easy solution
         next_piece, next_dir = next_edges.pop()
         next_edge = (next_piece, not next_dir)
         next_remaining = remaining.copy()
         next_remaining.remove(next_piece)
 
+        this_match = (origin[0], this_edge)
+
+        edge_length = abs(this_edge[1] - this_edge[0]) + 1
+
+        next_puzzle_piece = PUZZLE[next_piece]
+        next_limits = next_puzzle_piece.get_limits()
+        next_start = next_limits[0] if next_dir else next_limits[1]
+        next_direction = 1 if next_dir else -1
+        next_last = next_start + (edge_length - 1) * next_direction
+
+        next_match = (next_piece, (next_start, next_last))
+
         if len(next_remaining) == 0:  # we succeeded
-            return [(this_edge, next_edge)]
+            return [this_match, next_match]
 
         temp_result = _find_next_matching_puzzle_piece(next_edge, next_remaining)
+
         if temp_result is not None:
-            temp_result.insert(0, (this_edge, next_edge))
+            temp_result.insert(0, next_match)
+            temp_result.insert(0, this_match)
             return temp_result
 
         return None
