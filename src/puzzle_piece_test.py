@@ -9,7 +9,7 @@ from typing import Dict, List
 
 from component.point import Point
 from component.puzzle_piece import PuzzlePiece, PieceType
-from component.draw_puzzle_piece import render_puzzle_piece
+from component.draw_puzzle_piece import render_and_show_puzzle_piece
 
 
 def _points_from_list(raw_points: List[List[float]]) -> List[Point]:
@@ -69,14 +69,12 @@ def main() -> None:
     pieces = load_corner_pieces(json_path)
 
     print(f"Loaded {len(pieces)} corner pieces from {json_path}")
+    # render_and_show_puzzle_piece(pieces["piece_1.png"])
     for name, piece in pieces.items():
         print(
             f"{name}: type={piece.type}, vertices={len(piece.polygon.vertices)}, area={piece.polygon.area():.2f}, perimeter={piece.polygon.perimeter():.2f}, centroid={piece.polygon.centroid()}"
         )
-        img = render_puzzle_piece(piece, scale=0.5, margin=50)
-        cv2.imshow(name, img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        render_and_show_puzzle_piece(piece)
 
 
 if __name__ == "__main__":

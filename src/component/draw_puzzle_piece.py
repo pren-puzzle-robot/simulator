@@ -69,7 +69,7 @@ def render_puzzle_piece(
         cv2.line(img, (x1, y1), (x2, y2), (0, 0, 0), 2)
 
     # ----- Highlight outer edges (red, thicker) -----
-    for e in piece.outer_edges:
+    for e in piece.outer_edge.edges:
         # Assuming OuterEdge has p1, p2 as Points
         x1, y1 = _to_img_coords(e.p1, xmin, ymin, scale, margin)
         x2, y2 = _to_img_coords(e.p2, xmin, ymin, scale, margin)

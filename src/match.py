@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import math
 import cv2
+import time
 from matplotlib.pyplot import draw
 import numpy as np
 
 from component import PuzzlePiece, Point
+from component.piece_analysis import OuterEdge
 from component.draw_puzzle_piece import render_and_show_puzzle_piece, print_whole_puzzle_image
 from utilities import load_pieces
 from utilities.puzzle_piece_loader import PuzzlePieceLoader
@@ -19,7 +21,7 @@ def rotate_first_corner(puzzlePiece: PuzzlePiece) -> None:
     """Rotates the first corner piece to point down horizontally."""
 
     # Rotates the polygon so that the last outer edge is at the bottom
-    bottom_edge = puzzlePiece.outer_edges[-1]
+    bottom_edge = puzzlePiece.outer_edge.edges[-1]
     # Calculate the angle of the bottom edge
     dx = bottom_edge.p2.x - bottom_edge.p1.x
     dy = bottom_edge.p2.y - bottom_edge.p1.y
@@ -31,22 +33,26 @@ def rotate_first_corner(puzzlePiece: PuzzlePiece) -> None:
 
 
 def main() -> None:
+
     first_corner = next(i for i, p in PUZZLE.items() if p.is_corner)
     
     # render_and_show_puzzle_piece(PUZZLE[first_corner])
-    
+
     rotate_first_corner(PUZZLE[first_corner])
 
     # render_and_show_puzzle_piece(PUZZLE[first_corner])
 
+    start = time.perf_counter()
     order = solve_greedily(first_corner, PUZZLE)
+    end = time.perf_counter()
+    print("Time taken (s): ", end - start)
     print("Solved order:", order)
     print("Number of pieces:", len(order))
     print("Rotation of pieces (radians):", [PUZZLE[pid].rotation for pid in order])
 
     move_pieces_to_fit(order, PUZZLE)
 
-    print("Outer edges after moving:", "\n\n".join(str(PUZZLE[pid].outer_edges) for pid in order))
+    print("Outer edges after moving:", "\n\n".join(str(PUZZLE[pid].outer_edge.edges) for pid in order))
 
     print_whole_puzzle_image(PUZZLE)
 
@@ -64,27 +70,65 @@ def solve_greedily(start_id: int, pieces: dict[int, PuzzlePiece]) -> list[int]:
             print("All pieces processed. Order:", placed_order)
             return
 
+        score = 0
         best_pid: int | None = None
         best_piece: PuzzlePiece | None = None
         best_score = -1
+        best_outer_edge: OuterEdge | None = None
+        best_current_outer_edge: OuterEdge | None = None
+        best_additional_rotation: 0.0
 
-        # Try all remaining pieces and pick the one with most matches
-        for pid, piece in remaining_pieces.items():
-            # rotate_to_fit can mutate the piece in-place, which is fine
-            next_piece = rotate_to_fit(current_piece, piece)
-            print(f"Rotated piece {pid} to fit.")
+        current_outer_edge_start_index = current_piece.outer_edge.edges[0].i
 
-            score = get_amount_of_matching_points(current_piece, next_piece)
-            print(f"Piece {pid} has {score} matching points with current piece.")
+        # Try all possible outer edges of the current piece
+        for outer_edges in current_piece.possible_outer_edges:
+            # Only consider outer edges that start with the same index as the current outer edge
+            # Start of the outer edge must match, because this was found to match the previous piece
+            if outer_edges.edges[0].i != current_outer_edge_start_index:
+                continue
 
-            if score > best_score:
-                best_score = score
-                best_pid = pid
-                best_piece = next_piece
+            current_piece._outer_edge = outer_edges
+            # Try all remaining pieces and pick the one with most matches
+            for pid, piece in remaining_pieces.items():
+                # Try all possible outer edges of the new piece
+                for outer_edge in piece.possible_outer_edges:
+                    piece._outer_edge = outer_edge
+                    next_piece = rotate_to_fit(current_piece, piece)
+                    print(f"Rotated piece {pid} to fit.")
+
+                    def check_match(additional_rotation: float = 0.0) -> None:
+                        nonlocal score, best_score, best_pid, best_piece, best_outer_edge, best_current_outer_edge, best_additional_rotation
+                        score = get_amount_of_matching_points(current_piece, next_piece)
+                        print(f"Piece {pid} has {score} matching points with current piece.")
+
+                        if score > best_score:
+                            best_score = score
+                            best_pid = pid
+                            best_piece = next_piece
+                            best_outer_edge = outer_edge
+                            best_current_outer_edge = outer_edges
+                            best_additional_rotation = additional_rotation
+
+                    check_match()
+
+                    next_piece.rotate(math.pi / 2)
+                    check_match(math.pi / 2)
+
+                    next_piece.rotate(-math.pi / 2)
+                    check_match(-math.pi / 2)
+
         print()
 
         # Use the best matching piece as the next current
-        assert best_pid is not None and best_piece is not None, "No suitable next piece found!"
+        assert (best_pid is not None
+                and best_piece is not None
+                and best_outer_edge is not None), "No suitable next piece found!"
+
+        current_piece._outer_edge = best_current_outer_edge
+
+        best_piece._outer_edge = best_outer_edge
+        best_piece = rotate_to_fit(current_piece, best_piece)
+        best_piece.rotate(best_additional_rotation)
 
         # render_and_show_puzzle_piece(best_piece)
 
@@ -102,16 +146,16 @@ def move_pieces_to_fit(order: list[int], pieces: dict[int, PuzzlePiece]) -> None
     """Moves pieces in the order to form an A5 size image."""
 
     first_piece = pieces[order[0]]
-    first_piece.translate(first_piece.outer_edges[-1].p1, Point(0, 0))
+    first_piece.translate(first_piece.outer_edge.edges[-1].p1, Point(0, 0))
 
     for idx in range(1, len(order)):
         current_piece = pieces[order[idx - 1]]
         next_piece = pieces[order[idx]]
 
         # Get the last outer edge of the current piece
-        current_edge = current_piece.outer_edges[-1]
+        current_edge = current_piece.outer_edge.edges[-1]
         # Get the first outer edge of the next piece
-        next_edge = next_piece.outer_edges[0]
+        next_edge = next_piece.outer_edge.edges[0]
 
         MARGIN = 10.0 # margin between pieces
 
@@ -136,8 +180,8 @@ def move_pieces_to_fit(order: list[int], pieces: dict[int, PuzzlePiece]) -> None
 
 def get_amount_of_matching_points(current: PuzzlePiece, next_piece: PuzzlePiece) -> int:
     """Calculates the amount of matching points between two puzzle pieces."""
-    current_piece_index = current.outer_edges[-1].j
-    next_piece_index = next_piece.outer_edges[0].i
+    current_piece_index = current.outer_edge.edges[-1].j
+    next_piece_index = next_piece.outer_edge.edges[0].i
 
     max_steps = min(len(current.polygon.vertices), len(next_piece.polygon.vertices))
     steps = 0
@@ -169,15 +213,15 @@ def get_amount_of_matching_points(current: PuzzlePiece, next_piece: PuzzlePiece)
         else:
             # check if any of the next few points match
             found_better = False
-            for look_ahead in range(1, 4):
-                distance_ahead_1 = point_distance(current_piece_index, next_piece_index - look_ahead)
-                distance_ahead_2 = point_distance(current_piece_index + look_ahead, next_piece_index)
-                if distance_ahead_1 < 15.0 or distance_ahead_2 < 15.0:
-                    matching_points += 1
-                    current_piece_index += look_ahead + 1
-                    next_piece_index -= look_ahead + 1
-                    found_better = True
-                    break
+            # for look_ahead in range(1, 4):
+            #     distance_ahead_1 = point_distance(current_piece_index, next_piece_index - look_ahead)
+            #     distance_ahead_2 = point_distance(current_piece_index + look_ahead, next_piece_index)
+            #     if distance_ahead_1 < 15.0 or distance_ahead_2 < 15.0:
+            #         matching_points += 1
+            #         current_piece_index += look_ahead + 1
+            #         next_piece_index -= look_ahead + 1
+            #         found_better = True
+            #         break
             if not found_better:
                 break
 
@@ -189,10 +233,10 @@ def get_amount_of_matching_points(current: PuzzlePiece, next_piece: PuzzlePiece)
 def rotate_to_fit(puzzle_piece: PuzzlePiece, piece: PuzzlePiece) -> PuzzlePiece:
     """Rotates a puzzle piece to fit the current puzzle piece."""
     # Get the last outer edge of the current puzzle piece
-    current_edge = puzzle_piece.outer_edges[-1]
+    current_edge = puzzle_piece.outer_edge.edges[-1]
 
     # Get the first outer edge of the new piece
-    new_edge = piece.outer_edges[0]
+    new_edge = piece.outer_edge.edges[0]
 
     # Calculate the angle of the current edge
     dx1 = current_edge.p2.x - current_edge.p1.x

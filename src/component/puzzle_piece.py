@@ -17,8 +17,8 @@ class PuzzlePiece:
     """
 
     _polygon: Polygon
-    _type: PieceType
-    _outer_edges: List[OuterEdge]
+    _possible_possible_outer_edges: List[OuterEdge]
+    _outer_edge: OuterEdge
 
     _rotation: float = 0.0  # in radians
     _translation: tuple[float, float] = (0.0, 0.0)
@@ -32,14 +32,14 @@ class PuzzlePiece:
         self._polygon = Polygon(points_list)
 
         # First analysis
-        analysis = analyze_polygon(self._polygon)
-        # Normalize vertex order based on this analysis
-        self._normalize_vertex_order(analysis)
+        # analysis = analyze_polygon(self._polygon)
+        # # Normalize vertex order based on this analysis
+        # self._normalize_vertex_order(analysis)
 
         # Re-analyze after rotation so indices and outer_edges match
         final_analysis = analyze_polygon(self._polygon)
-        self._type = final_analysis.piece_type
-        self._outer_edges = final_analysis.outer_edges
+        self._possible_outer_edges = final_analysis
+        self._outer_edge = final_analysis[0]
 
     def _normalize_vertex_order(self, analysis: PieceAnalysis) -> None:
         """
@@ -89,7 +89,7 @@ class PuzzlePiece:
         Get the lowest and the highest index of the polygon that are at\n
         the edge of an outer edge.
         """
-        data: list[tuple[int, int]] = [edge.get_indices for edge in self._outer_edges]
+        data: list[tuple[int, int]] = [edge.get_indices for edge in self.outer_edge.edges]
         length: int = len(self.polygon.vertices)
 
         vertices: set[int] = {v for u, v in data for v in (u, v)}
@@ -130,7 +130,8 @@ class PuzzlePiece:
         self._rotation += angle_rad
 
         self._polygon.rotate(angle_rad)
-        self._outer_edges = [ edge.rotated(angle_rad, self.polygon.centroid()) for edge in self._outer_edges ]
+        for edge in self._possible_outer_edges:
+            edge.rotate(angle_rad, self.polygon.centroid())
 
     def translate(self, from_point: Point, to_point: Point) -> None:
         """Translate the puzzle piece so that from_point moves to to_point."""
@@ -141,7 +142,8 @@ class PuzzlePiece:
         print("Translation:", self._translation)
 
         self._polygon.translate(dx, dy)
-        self._outer_edges = [ edge.translated(dx, dy) for edge in self._outer_edges ]
+        self._possible_outer_edges = [ edge.translated(dx, dy) for edge in self._possible_outer_edges ]
+        self._outer_edge = self.outer_edge.translated(dx, dy)
 
     @property
     def polygon(self) -> Polygon:
@@ -149,20 +151,25 @@ class PuzzlePiece:
 
     @property
     def type(self) -> PieceType:
-        return self._type
+        return self.outer_edge.type
 
     @property
-    def outer_edges(self) -> List[OuterEdge]:
+    def possible_outer_edges(self) -> List[OuterEdge]:
         """Detected outer edges of this piece."""
-        return self._outer_edges
+        return self._possible_outer_edges
+    
+    @property
+    def outer_edge(self) -> OuterEdge:
+        """Outer edge of this piece."""
+        return self._outer_edge
 
     @property
     def is_corner(self) -> bool:
-        return self._type == PieceType.CORNER
+        return self.outer_edge.type == PieceType.CORNER
 
     @property
     def is_edge(self) -> bool:
-        return self._type == PieceType.EDGE
+        return self.outer_edge.type == PieceType.EDGE
     
     @property
     def rotation(self) -> float:
