@@ -49,52 +49,77 @@ def main() -> None:
     previous_piece = first_piece
     previous_edge = first_edge
 
+    odd: bool = True
+
     for next_piece_id, next_edge in result:
         current_piece = PUZZLE[next_piece_id]
-        current_piece.translate(current_piece.polygon.vertices[next_edge[0]], previous_piece.polygon.vertices[previous_edge[0]])
-        rotation = get_angle((previous_piece.polygon.vertices[previous_edge[0]], previous_piece.polygon.vertices[previous_edge[1]]), (current_piece.polygon.vertices[next_edge[0]], current_piece.polygon.vertices[next_edge[1]]))
+        if odd:
+            rotation = get_angle(
+                (
+                    previous_piece.polygon.vertices[previous_edge[0]],
+                    previous_piece.polygon.vertices[previous_edge[1]],
+                ),
+                (
+                    current_piece.polygon.vertices[next_edge[0]],
+                    current_piece.polygon.vertices[next_edge[1]],
+                ),
+            )
+            current_piece.rotate(rotation)
 
-        print_whole_puzzle_image(PUZZLE)
+            # print_whole_puzzle_image(PUZZLE)
 
-        break
+            current_piece.translate(
+                current_piece.polygon.vertices[next_edge[0]],
+                previous_piece.polygon.vertices[previous_edge[0]],
+            )
+
+            # print_whole_puzzle_image(PUZZLE)
+            odd = False
+        else:
+            odd = True
+
+        previous_piece = current_piece
+        previous_edge = next_edge
+
+    print_whole_puzzle_image(PUZZLE)
+
 
 def get_angle(this_edge: tuple[Point, Point], next_edge: tuple[Point, Point]) -> float:
     """Rotates a puzzle piece to fit the current puzzle piece."""
     # Get the last outer edge of the current puzzle piece
-    #current_edge = puzzle_piece.outer_edges[-1]
+    # current_edge = puzzle_piece.outer_edges[-1]
 
     # Get the first outer edge of the new piece
-    #new_edge = piece.outer_edges[0]
+    # new_edge = piece.outer_edges[0]
 
     # Calculate the angle of the current edge
-    dx1 = this_edge[0].x - this_edge[1].x
-    dy1 = current_edge.p2.y - current_edge.p1.y
+    dx1 = this_edge[1].x - this_edge[0].x
+    dy1 = this_edge[1].y - this_edge[0].y
     angle1 = math.atan2(dy1, dx1)
 
     # Calculate the angle of the new edge
-    dx2 = new_edge.p2.x - new_edge.p1.x
-    dy2 = new_edge.p2.y - new_edge.p1.y
+    dx2 = next_edge[1].x - next_edge[0].x
+    dy2 = next_edge[1].y - next_edge[0].y
     angle2 = math.atan2(dy2, dx2)
 
     # Calculate the rotation needed to align the new edge with the current edge
     rotation_needed = angle1 - angle2
-    piece.rotate(rotation_needed)
-    return piece
-    
+
+    return rotation_needed
 
 
-def rotate_first_corner(puzzlePiece: PuzzlePiece) -> None:
+def rotate_first_corner(puzzle_piece: PuzzlePiece) -> None:
     """Rotates the first corner piece to point down horizontally."""
 
     # Rotates the polygon so that the last outer edge is at the bottom
-    bottom_edge = puzzlePiece.outer_edges[-1]
+    bottom_edge = puzzle_piece.outer_edges[-1]
     # Calculate the angle of the bottom edge
     dx = bottom_edge.p2.x - bottom_edge.p1.x
     dy = bottom_edge.p2.y - bottom_edge.p1.y
     angle = math.atan2(dy, dx)
     rotation_needed = -angle + math.pi / 2  # Rotate to point downwards
     # Rotate all points in the polygon
-    puzzlePiece.rotate(rotation_needed)
+    puzzle_piece.rotate(rotation_needed)
     pass
 
 
@@ -272,7 +297,7 @@ def _angle_matching(
     o_angle = _angle_at_this(o_prev, o_this, o_next)
     m_angle = _angle_at_this(m_prev, m_this, m_next)
 
-    return abs(o_angle - m_angle) <= ERROR_MARCHING_ANGLE / 2.0
+    return abs(o_angle - m_angle) <= math.radians(ERROR_MARCHING_ANGLE / 2.0)
 
 
 def _angle_at_this(prev: Point, this: Point, follow: Point) -> float:
@@ -293,10 +318,9 @@ def _angle_at_this(prev: Point, this: Point, follow: Point) -> float:
     dot = v1_x * v2_x + v1_y * v2_y
     cross = v1_x * v2_y - v1_y * v2_x  # Skalar in 2D
 
-    # Unsigned angle: 0..180°
-    angle_rad = math.atan2(abs(cross), dot)
-    angle_deg = math.degrees(angle_rad)
-    return angle_deg
+    # radiant angle between the two vectors
+    angle_rad = math.atan2(cross, dot)
+    return angle_rad
 
 
 if __name__ == "__main__":
