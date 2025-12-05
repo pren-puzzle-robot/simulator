@@ -3,7 +3,9 @@ from typing import Iterable, List
 
 from .point import Point
 from .polygon import Polygon
-from .piece_analysis import PieceType, OuterEdge, PieceAnalysis, analyze_polygon
+from .edge import Edge
+from .outer_edge import OuterEdge, PieceType
+
 
 
 class PuzzlePiece:
@@ -37,35 +39,36 @@ class PuzzlePiece:
         # self._normalize_vertex_order(analysis)
 
         # Re-analyze after rotation so indices and outer_edges match
+        from utilities import analyze_polygon
         final_analysis = analyze_polygon(self._polygon)
         self._possible_outer_edges = final_analysis
         self._outer_edge = final_analysis[0]
 
-    def _normalize_vertex_order(self, analysis: PieceAnalysis) -> None:
-        """
-        Rotate polygon vertices so that the first vertex is the
-        end point (j) of a chosen outer edge.
-        """
-        if not analysis.outer_edges:
-            # Should not happen with only corner/edge pieces,
-            # but do nothing if it does.
-            return
+    # def _normalize_vertex_order(self, analysis: PieceAnalysis) -> None:
+    #     """
+    #     Rotate polygon vertices so that the first vertex is the
+    #     end point (j) of a chosen outer edge.
+    #     """
+    #     if not analysis.outer_edges:
+    #         # Should not happen with only corner/edge pieces,
+    #         # but do nothing if it does.
+    #         return
 
-        # Choose the last outer edge as canonical
-        edge = analysis.outer_edges[-1]
-        target_index = edge.j  # last vertex index of that edge
+    #     # Choose the last outer edge as canonical
+    #     edge = analysis.outer_edges[-1]
+    #     target_index = edge.j  # last vertex index of that edge
 
-        verts = self._polygon.vertices
-        n = len(verts)
-        if n == 0:
-            return
+    #     verts = self._polygon.vertices
+    #     n = len(verts)
+    #     if n == 0:
+    #         return
 
-        # Rotate list: new_verts[0] == verts[target_index]
-        target_index = target_index % n
-        new_verts = verts[target_index:] + verts[:target_index]
+    #     # Rotate list: new_verts[0] == verts[target_index]
+    #     target_index = target_index % n
+    #     new_verts = verts[target_index:] + verts[:target_index]
 
-        # Replace polygon with rotated vertices
-        self._polygon = Polygon(new_verts)
+    #     # Replace polygon with rotated vertices
+    #     self._polygon = Polygon(new_verts)
 
     def get_triplet(self, index: int, direction: bool) -> tuple[Point, Point, Point]:
         """

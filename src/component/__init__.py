@@ -7,6 +7,9 @@ __copyright__ = "Copyright (c) 2025 HSLU PREN Team 13, HS25. All rights reserved
 from .puzzle_piece import PuzzlePiece
 from .polygon import Polygon
 from .point import Point
+from .edge import Edge
+from .outer_edge import OuterEdge
+
 
 __all__ = [
     "Edge",
