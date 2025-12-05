@@ -99,7 +99,7 @@ def group_close_points(pts, min_dist=10):
 def detect_corners_for_piece(
     image_path,
     approx_frac=0.002,
-    min_turn_deg=45.0,
+    min_turn_deg=30.0,
     min_corner_dist=10  # minimal distance between corners in pixels
 ):
     img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
