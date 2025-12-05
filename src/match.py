@@ -10,7 +10,7 @@ import numpy as np
 
 from component import PuzzlePiece, Point
 from component.piece_analysis import OuterEdge
-from component.draw_puzzle_piece import render_and_show_puzzle_piece, print_whole_puzzle_image
+from utilities.draw_puzzle_piece import render_and_show_puzzle_piece, print_whole_puzzle_image
 from utilities.puzzle_piece_loader import PuzzlePieceLoader
 
 def rotate_first_corner(puzzlePiece: PuzzlePiece) -> None:

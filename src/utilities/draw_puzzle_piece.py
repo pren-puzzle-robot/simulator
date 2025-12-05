@@ -8,8 +8,8 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from .puzzle_piece import PuzzlePiece
-from .point import Point
+from component.puzzle_piece import PuzzlePiece
+from component.point import Point
 
 
 def _compute_bounds(piece: PuzzlePiece) -> Tuple[float, float, float, float]:

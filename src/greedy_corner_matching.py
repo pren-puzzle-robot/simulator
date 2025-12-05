@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import math
 
-from component import PuzzlePiece, Point, print_whole_puzzle_image
-from utilities import load_pieces
+from component import PuzzlePiece, Point
+from utilities import load_pieces, print_whole_puzzle_image
 
 ERROR_MARCHING_LENGTH: float = 0.05
 ERROR_MARCHING_ANGLE: float = 10  # degrees

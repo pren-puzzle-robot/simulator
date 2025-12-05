@@ -17,7 +17,7 @@ import numpy as np
 
 from scipy.signal import find_peaks
 
-from .point import Point
+from component.point import Point
 
 MIN_PROMINENCE = 0.1
 MIN_DISTANCE = 10

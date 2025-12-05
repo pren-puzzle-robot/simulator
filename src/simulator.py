@@ -7,8 +7,6 @@ from pull_pieces import pull_pieces
 from corners import detect_corners
 from match import solve
 from component import PuzzlePiece, Point
-from component.piece_analysis import OuterEdge
-from utilities.puzzle_piece_loader import PuzzlePieceLoader
 
 def main():
     ap = argparse.ArgumentParser(description="Simulate puzzle assembly process")
