@@ -171,7 +171,7 @@ if __name__ == "__main__":
         f for f in glob(os.path.join(src_folder, "piece_*.png"))
         if re.fullmatch(r".*piece_\d+\.png", f)
     ]
-    results = {}
+    results = []
 
     if not images:
         print("No piece_*.png files found.")
@@ -187,7 +187,7 @@ if __name__ == "__main__":
             min_turn_deg=min_turn_deg
         )
         if corners is not None:
-            results[filename] = [(int(p[0][0]), int(p[0][1])) for p in corners]
+            results.append((filename, [(int(p[0][0]), int(p[0][1])) for p in corners]))
 
         print_debug_image(
             img_path,
