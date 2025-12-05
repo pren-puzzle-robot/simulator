@@ -45,3 +45,6 @@ class Point:
     def get_distance_between(self: Point, other: Point) -> float:
         """compute the distance between this corner and an other one"""
         return ((self._x - other.x) ** 2 + (self._y - other.y) ** 2) ** 0.5
+
+    def __repr__(self):
+        return f"Point(x={self._x}, y={self._y})"

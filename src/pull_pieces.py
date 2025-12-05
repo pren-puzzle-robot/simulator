@@ -78,6 +78,7 @@ def convexity_features(contour):
 
 def save_contours_only(img, contours, outdir):
     summary = []
+    paths = []
     for idx, c in enumerate(contours, start=1):
         area = cv.contourArea(c)
         perim = cv.arcLength(c, True)
@@ -85,7 +86,9 @@ def save_contours_only(img, contours, outdir):
         # save a binary mask of each contour
         piece_mask = np.zeros(img.shape[:2], dtype=np.uint8)
         cv.drawContours(piece_mask, [c], -1, 255, thickness=cv.FILLED)
-        cv.imwrite(os.path.join(outdir, f"piece_{idx}.png"), piece_mask)
+        path = os.path.join(outdir, f"piece_{idx}.png")
+        paths.append(path)
+        cv.imwrite(path, piece_mask)
 
         summary.append({
             "piece_id": idx,
@@ -96,7 +99,21 @@ def save_contours_only(img, contours, outdir):
     with open(os.path.join(outdir, "edges.json"), "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
 
-    return summary
+    return summary, paths
+
+def pull_pieces(image, outdir, min_area=2000) -> list[str]:
+    ensure_dir(outdir)
+
+    gray = preprocess(image)
+    fg = segment_foreground(gray)
+    contours = find_pieces(fg, min_area=min_area)
+
+    # optional: refine contours using Canny edges along the mask for crisper boundaries
+    edges = cv.Canny(gray, 60, 180)
+    edges = cv.bitwise_and(edges, edges, mask=fg)
+
+    summary, paths = save_contours_only(image, contours, outdir)
+    return paths
 
 
 def main():
@@ -111,20 +128,9 @@ def main():
     img = cv.imread(args.image)
     if img is None:
         raise SystemExit(f"Could not read image: {args.image}")
-
-    gray = preprocess(img)
-    fg = segment_foreground(gray)
-    contours = find_pieces(fg, min_area=args.min_area)
-
-    # optional: refine contours using Canny edges along the mask for crisper boundaries
-    edges = cv.Canny(gray, 60, 180)
-    edges = cv.bitwise_and(edges, edges, mask=fg)
-    # (kept for inspection; not required) 
-    cv.imwrite(os.path.join(args.outdir, "edges.png"), edges)
-
-    summary = save_contours_only(img, contours, args.outdir)
-    print(f"Saved {len(contours)} piece masks, annotated overlay, and edges.json to {args.outdir}")
-    print(json.dumps(summary, indent=2))
+    
+    paths = pull_pieces(img, args.outdir, min_area=args.min_area)
+    print(f"Saved {len(paths)} piece masks to {args.outdir}")
 
 if __name__ == "__main__":
     main()

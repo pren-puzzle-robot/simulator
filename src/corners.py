@@ -96,9 +96,8 @@ def group_close_points(pts, min_dist=10):
     return new_points.reshape(-1, 1, 2)
 
 
-def detect_corners(
+def detect_corners_for_piece(
     image_path,
-    output_path="corners_output.png",
     approx_frac=0.002,
     min_turn_deg=45.0,
     min_corner_dist=10  # minimal distance between corners in pixels
@@ -125,6 +124,10 @@ def detect_corners(
     # 2) Group corners that are too close to each other
     corners = group_close_points(corners, min_dist=min_corner_dist)
 
+    return corners
+
+def print_debug_image(image_path: str, corners: np.ndarray, output_path: str) -> None:
+    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     color_img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
     cv2.drawContours(color_img, [corners], -1, (0, 255, 255), 2)
 
@@ -135,17 +138,31 @@ def detect_corners(
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
 
     cv2.imwrite(output_path, color_img)
-    print(f"Saved {output_path} with {len(corners)} corners")
 
-    return [(int(p[0][0]), int(p[0][1])) for p in corners]
+def detect_corners(images: list[str], out_path: str) -> dict[str, list[tuple[int, int]]]:
+    corners_per_piece = []
+    for image_path in images:
+        filename = os.path.basename(image_path)
+        name, ext = os.path.splitext(filename)
+        corners = detect_corners_for_piece(
+            image_path
+        )
 
+        output_image = os.path.join(out_path, f"{name}_corners{ext}")
+        print_debug_image(image_path, corners, output_image)
+
+        corners_per_piece.append((filename, [(int(p[0][0]), int(p[0][1])) for p in corners]))
+    
+    with open(os.path.join(out_path, "corners.json"), "w", encoding="utf-8") as f:
+        json.dump(corners_per_piece, f, indent=2)
+        
+    return corners_per_piece
 
 if __name__ == "__main__":
     # Default folder: current or specified
     src_folder = sys.argv[1] if len(sys.argv) >= 2 else "../output"
     output_json = os.path.join(src_folder, "corners.json")
 
-    # You can tweak these to tune robustness vs sensitivity:
     approx_frac = 0.002   # bigger = more simplification
     min_turn_deg = 30.0   # bigger = fewer corners, only sharp ones
 
@@ -163,15 +180,20 @@ if __name__ == "__main__":
     for img_path in images:
         filename = os.path.basename(img_path)
         name, ext = os.path.splitext(filename)
-        out_path = os.path.join(src_folder, f"{name}_output{ext}")
-        corners = detect_corners(
+        out_filename= f"{name}_corners{ext}"
+        corners = detect_corners_for_piece(
             img_path,
-            out_path,
             approx_frac=approx_frac,
             min_turn_deg=min_turn_deg
         )
         if corners is not None:
-            results[filename] = corners
+            results[filename] = [(int(p[0][0]), int(p[0][1])) for p in corners]
+
+        print_debug_image(
+            img_path,
+            corners,
+            os.path.join(src_folder, out_filename)
+        )
 
     # Save all results to JSON
     with open(output_json, "w", encoding="utf-8") as f:

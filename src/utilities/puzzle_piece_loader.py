@@ -99,7 +99,7 @@ class PuzzlePieceLoader:
 
         pieces: Dict[int, PuzzlePiece] = {}
 
-        for filename, raw_points in data.items():
+        for filename, raw_points in data:
             points = cls._points_from_list(raw_points)
 
             # You can enforce at least 3 points if your Polygon requires it:

@@ -11,11 +11,7 @@ import numpy as np
 from component import PuzzlePiece, Point
 from component.piece_analysis import OuterEdge
 from component.draw_puzzle_piece import render_and_show_puzzle_piece, print_whole_puzzle_image
-from utilities import load_pieces
 from utilities.puzzle_piece_loader import PuzzlePieceLoader
-
-
-PUZZLE: dict[int, PuzzlePiece] = PuzzlePieceLoader.load_pieces()
 
 def rotate_first_corner(puzzlePiece: PuzzlePiece) -> None:
     """Rotates the first corner piece to point down horizontally."""
@@ -32,29 +28,27 @@ def rotate_first_corner(puzzlePiece: PuzzlePiece) -> None:
     pass
 
 
-def main() -> None:
+def solve(puzzle: dict[int, PuzzlePiece]) -> None:
 
-    first_corner = next(i for i, p in PUZZLE.items() if p.is_corner)
+    first_corner = next(i for i, p in puzzle.items() if p.is_corner)
     
-    # render_and_show_puzzle_piece(PUZZLE[first_corner])
+    # render_and_show_puzzle_piece(puzzle[first_corner])
+    rotate_first_corner(puzzle[first_corner])
 
-    rotate_first_corner(PUZZLE[first_corner])
-
-    # render_and_show_puzzle_piece(PUZZLE[first_corner])
+    # render_and_show_puzzle_piece(puzzle[first_corner])
 
     start = time.perf_counter()
-    order = solve_greedily(first_corner, PUZZLE)
+    order = solve_greedily(first_corner, puzzle)
     end = time.perf_counter()
     print("Time taken (s): ", end - start)
     print("Solved order:", order)
     print("Number of pieces:", len(order))
-    print("Rotation of pieces (radians):", [PUZZLE[pid].rotation for pid in order])
+    print("Rotation of pieces (radians):", [puzzle[pid].rotation for pid in order])
 
-    move_pieces_to_fit(order, PUZZLE)
+    move_pieces_to_fit(order, puzzle)
 
-    print("Outer edges after moving:", "\n\n".join(str(PUZZLE[pid].outer_edge.edges) for pid in order))
-
-    print_whole_puzzle_image(PUZZLE)
+    print("Outer edges after moving:", "\n\n".join(str(puzzle[pid].outer_edge.edges) for pid in order))
+    print_whole_puzzle_image(puzzle)
 
 
 def solve_greedily(start_id: int, pieces: dict[int, PuzzlePiece]) -> list[int]:
@@ -255,5 +249,5 @@ def rotate_to_fit(puzzle_piece: PuzzlePiece, piece: PuzzlePiece) -> PuzzlePiece:
 
 
 if __name__ == "__main__":
-    main()
-
+    PUZZLE: dict[int, PuzzlePiece] = PuzzlePieceLoader.load_pieces()
+    solve(PUZZLE)

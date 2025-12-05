@@ -182,4 +182,4 @@ class PuzzlePiece:
         return self._translation
 
     def __repr__(self) -> str:
-        return f"PuzzlePiece(type={self._type.value!r}, polygon={self._polygon!r})"
+        return f"PuzzlePiece(polygon={self._polygon!r}, outer_edge={self.outer_edge})"
