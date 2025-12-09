@@ -47,7 +47,6 @@ def solve(puzzle: dict[int, PuzzlePiece]) -> None:
     move_pieces_to_fit(order, puzzle)
 
     print("Outer edges after moving:", "\n\n".join(str(puzzle[pid].outer_edge.edges) for pid in order))
-    print_whole_puzzle_image(puzzle)
 
 
 def solve_greedily(start_id: int, pieces: dict[int, PuzzlePiece]) -> list[int]:
@@ -250,3 +249,5 @@ def rotate_to_fit(puzzle_piece: PuzzlePiece, piece: PuzzlePiece) -> PuzzlePiece:
 if __name__ == "__main__":
     PUZZLE: dict[int, PuzzlePiece] = PuzzlePieceLoader.load_pieces()
     solve(PUZZLE)
+    print_whole_puzzle_image(PUZZLE)
+

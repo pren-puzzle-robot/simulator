@@ -4,12 +4,12 @@ import math
 from typing import Tuple
 import random
 
-import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from component.puzzle_piece import PuzzlePiece
 from component.point import Point
+
 
 
 def _compute_bounds(piece: PuzzlePiece) -> Tuple[float, float, float, float]:
@@ -18,28 +18,23 @@ def _compute_bounds(piece: PuzzlePiece) -> Tuple[float, float, float, float]:
     ys = [p.y for p in verts]
     return min(xs), max(xs), min(ys), max(ys)
 
-
-def _to_img_coords(
-    p: Point, xmin: float, ymin: float, scale: float, margin: int
-) -> Tuple[int, int]:
+def _to_img_coords(p: Point, xmin: float, ymin: float, scale: float, margin: int) -> Tuple[int, int]:
     x = int((p.x - xmin) * scale) + margin
     y = int((p.y - ymin) * scale) + margin
     return x, y
 
 def render_and_show_puzzle_piece(piece: PuzzlePiece) -> None:
-    """Render and display the puzzle piece using OpenCV."""
+    """Render and display the puzzle piece using PIL."""
     img = render_puzzle_piece(piece, scale=0.5, margin=50)
-    cv2.imshow("Puzzle Piece", img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    img.show(title="Puzzle Piece")
 
 def render_puzzle_piece(
     piece: PuzzlePiece,
     scale: float = 1.0,
     margin: int = 40,
-) -> np.ndarray:
+) -> Image.Image:
     """
-    Render the puzzle piece to a new OpenCV image.
+    Render the puzzle piece to a new PIL image.
 
     - Polygon outline: black
     - Outer edges: red
@@ -55,7 +50,15 @@ def render_puzzle_piece(
     if h <= 0:
         h = 200
 
-    img = np.ones((h, w, 3), dtype=np.uint8) * 255  # white background
+    img = Image.new("RGB", (w, h), (255, 255, 255))
+    draw = ImageDraw.Draw(img)
+
+    try:
+        font_small = ImageFont.truetype("arial.ttf", 14)
+        font_big = ImageFont.truetype("arial.ttf", 28)
+    except Exception:
+        font_small = ImageFont.load_default()
+        font_big = ImageFont.load_default()
 
     verts = piece.polygon.vertices
     n = len(verts)
@@ -66,48 +69,28 @@ def render_puzzle_piece(
         p2 = verts[(i + 1) % n]
         x1, y1 = _to_img_coords(p1, xmin, ymin, scale, margin)
         x2, y2 = _to_img_coords(p2, xmin, ymin, scale, margin)
-        cv2.line(img, (x1, y1), (x2, y2), (0, 0, 0), 2)
+        draw.line([(x1, y1), (x2, y2)], fill=(0, 0, 0), width=2)
 
     # ----- Highlight outer edges (red, thicker) -----
     for e in piece.outer_edge.edges:
-        # Assuming OuterEdge has p1, p2 as Points
         x1, y1 = _to_img_coords(e.p1, xmin, ymin, scale, margin)
         x2, y2 = _to_img_coords(e.p2, xmin, ymin, scale, margin)
-        cv2.line(img, (x1, y1), (x2, y2), (0, 0, 255), 4)
+        draw.line([(x1, y1), (x2, y2)], fill=(255, 0, 0), width=4)
 
     # ----- Draw points and indices -----
+    r = 4
     for idx, p in enumerate(verts):
         x, y = _to_img_coords(p, xmin, ymin, scale, margin)
-        # point marker
-        cv2.circle(img, (x, y), 4, (0, 0, 255), -1)
-        # index label
-        cv2.putText(
-            img,
-            str(idx),
-            (x + 5, y - 5),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
-            (255, 0, 0),
-            1,
-            cv2.LINE_AA,
-        )
+        draw.ellipse((x - r, y - r, x + r, y + r), fill=(255, 0, 0), outline=None)
+        draw.text((x + 6, y - 14), str(idx), fill=(0, 0, 255), font=font_small)
 
     # ----- Draw type text -----
     type_text = piece.type.value.upper()
-    cv2.putText(
-        img,
-        type_text,
-        (10, 30),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1.0,
-        (0, 128, 0),
-        2,
-        cv2.LINE_AA,
-    )
+    draw.text((10, 10), type_text, fill=(0, 128, 0), font=font_big)
 
     return img
 
-def print_whole_puzzle_image(pieces: dict[int, PuzzlePiece]) -> None:
+def print_whole_puzzle_image(pieces: dict[int, PuzzlePiece]) -> Image.Image:
     """Renders and prints the full puzzle image from the pieces."""
     all_points = []
     for piece in pieces.values():
@@ -145,7 +128,35 @@ def print_whole_puzzle_image(pieces: dict[int, PuzzlePiece]) -> None:
         r = 5
         draw.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(0, 0, 0, 255))
 
-        label = "Piece {}\nRotation: {:.2f}\nTranslation: ({:.2f}, {:.2f})".format(pid, piece.rotation, piece.translation[0], piece.translation[1])
-        draw.text((piece.polygon.centroid().x, piece.polygon.centroid().y), text=label, font=ImageFont.load_default(size=30))
+        label = (
+            "Piece {}\n"
+            "Rotation: {:.2f}\n"
+            "Translation: ({:.2f}, {:.2f})\n"
+            "Coords Relative to 0,0: ({:.2f}, {:.2f})"
+        ).format(
+            pid,
+            piece.rotation,
+            piece.translation[0], piece.translation[1],
+            piece.polygon.centroid().x, piece.polygon.centroid().y
+        )
+        font = ImageFont.load_default(size=30)
+        gap = 8  # pixels below centroid
 
-    img.show()
+        bbox = draw.multiline_textbbox((0, 0), label, font=font, spacing=4, align="center")
+        text_w = bbox[2] - bbox[0]
+        text_h = bbox[3] - bbox[1]
+
+        # Position so the text block is centered horizontally under the centroid
+        x = cx - text_w / 2
+        y = cy + gap
+
+        draw.multiline_text(
+            (x, y),
+            label,
+            font=font,
+            fill=(0, 0, 0, 255),
+            spacing=4,
+            align="center",
+        )
+
+    return img

@@ -7,6 +7,7 @@ from pull_pieces import pull_pieces
 from corners import detect_corners
 from match import solve
 from component import PuzzlePiece, Point
+from utilities.draw_puzzle_piece import print_whole_puzzle_image
 
 def main():
     ap = argparse.ArgumentParser(description="Simulate puzzle assembly process")
@@ -28,16 +29,19 @@ def main():
     print(f"Detected corners for {len(corners)} pieces, saved to {args.outdir}")
 
     # Step 3: create PuzzlePiece objects, analyze edges, etc.
-    puzzle_pieces = []
-    for filename, corner_list in corners:
+    puzzle_pieces = {}
+    for i, (filename, corner_list) in enumerate(corners):
         points = [Point(x=float(x), y=float(y)) for x, y in corner_list]
         piece = PuzzlePiece(points)
-        puzzle_pieces.append(piece)
+        puzzle_pieces[i] = piece
         print(f"Created PuzzlePiece from {filename}: {piece}")
 
     # Step 4: Solve the puzzle 
-    solve({i: piece for i, piece in enumerate(puzzle_pieces)})
+    solve(puzzle_pieces)
 
+    solved = print_whole_puzzle_image(puzzle_pieces)
+    solved.show()
+    
 def ensure_out_dir(outdir: str) -> None:
     """Ensure the output directory exists."""
     os.makedirs(outdir, exist_ok=True)
