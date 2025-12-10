@@ -41,41 +41,6 @@ def find_pieces(mask, min_area=2000):
     contours = [c for c in contours if cv.contourArea(c) >= min_area]
     return contours
 
-def convexity_features(contour):
-    # convex hull and defects for concave “holes”
-    hull = cv.convexHull(contour, returnPoints=False)
-    if hull is None or len(hull) < 3:
-        return [], [], None
-    defects = cv.convexityDefects(contour, hull)
-    holes_pts = []
-    tabs_pts = []
-    if defects is not None:
-        for i in range(defects.shape[0]):
-            s, e, f, depth = defects[i,0]
-            far = tuple(contour[f][0])
-            # filter shallow defects to reduce noise (depth is scaled by 256)
-            if depth > 8*256:
-                holes_pts.append(far)  # concave
-    # Convex “tabs”: approximate by finding hull points with high curvature
-    hull_pts = cv.convexHull(contour, returnPoints=True).reshape(-1,2)
-    if len(hull_pts) >= 5:
-        # compute angle at each hull vertex
-        for i in range(len(hull_pts)):
-            p_prev = hull_pts[(i-1)%len(hull_pts)]
-            p = hull_pts[i]
-            p_next = hull_pts[(i+1)%len(hull_pts)]
-            v1 = p_prev - p
-            v2 = p_next - p
-            if np.linalg.norm(v1)==0 or np.linalg.norm(v2)==0: 
-                continue
-            cosang = np.dot(v1,v2)/(np.linalg.norm(v1)*np.linalg.norm(v2))
-            cosang = np.clip(cosang, -1.0, 1.0)
-            angle = np.degrees(np.arccos(cosang))
-            # “tab” corners tend to be sharper than flat edges; tune threshold as needed
-            if angle < 110:  # heuristic
-                tabs_pts.append(tuple(p))
-    return tabs_pts, holes_pts, hull_pts
-
 def save_contours_only(img, contours, outdir):
     summary = []
     paths = []

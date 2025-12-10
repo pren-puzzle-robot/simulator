@@ -36,8 +36,8 @@ def filter_by_turn_angle(pts, min_turn_deg=45.0):
         c = np.dot(v1, v2) / denom
         c = np.clip(c, -1.0, 1.0)
 
-        ang = degrees(acos(c))     # interior angle in [0, 180]
-        turn = 180.0 - ang         # 0 = straight, bigger = sharper corner
+        ang = degrees(acos(c)) # interior angle in [0, 180]
+        turn = 180.0 - ang # 0 = straight, bigger = sharper corner
 
         if turn >= min_turn_deg:
             keep.append([p_cur])
@@ -118,11 +118,11 @@ def detect_corners_for_piece(
     eps = approx_frac * cv2.arcLength(cnt, True)
     poly = cv2.approxPolyDP(cnt, eps, True)
 
-    # 1) Keep only strong turns
-    corners = filter_by_turn_angle(poly, min_turn_deg=min_turn_deg)
+    # 1) Group corners that are too close to each other
+    corners = group_close_points(poly, min_dist=min_corner_dist)
 
-    # 2) Group corners that are too close to each other
-    corners = group_close_points(corners, min_dist=min_corner_dist)
+    # 2) Keep only strong turns
+    corners = filter_by_turn_angle(corners, min_turn_deg=min_turn_deg)
 
     return corners
 
