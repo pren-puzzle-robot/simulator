@@ -168,7 +168,7 @@ class Match(Solver):
             )
 
             next_piece.translate(next_edge.p1, target)
-            
+
 
     @staticmethod
     def get_amount_of_matching_points(current: PuzzlePiece, next_piece: PuzzlePiece) -> int:
@@ -222,7 +222,7 @@ class Match(Solver):
 
 
         return matching_points
-    
+
     @staticmethod
     def rotate_to_fit(puzzle_piece: PuzzlePiece, piece: PuzzlePiece) -> PuzzlePiece:
         """Rotates a puzzle piece to fit the current puzzle piece."""

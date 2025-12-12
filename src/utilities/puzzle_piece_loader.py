@@ -115,25 +115,3 @@ class PuzzlePieceLoader:
             pieces[piece_num] = piece
 
         return pieces
-
-    """
-    # no longer used function for testing
-    def main() -> None:
-        json_path = "..\\output\\corners.json"
-
-        pieces = PuzzlePieceLoader._load_corner_pieces(json_path)
-
-        print(f"Loaded {len(pieces)} corner pieces from {json_path}")
-        for name, piece in pieces.items():
-            print(
-                f"{name}: type={piece.type}, vertices={len(piece.polygon.vertices)}, area={piece.polygon.area():.2f}, perimeter={piece.polygon.perimeter():.2f}, centroid={piece.polygon.centroid()}"
-            )
-            img = render_puzzle_piece(piece, scale=0.5, margin=50)
-            cv2.imshow(str(name), img)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
-
-
-    if __name__ == "__main__":
-        main()
-    """

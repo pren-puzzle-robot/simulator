@@ -1,20 +1,28 @@
 """Main simulator module. Orchestrates the simulation process."""
 
-import argparse, json, os
+import argparse
+import os
 import cv2 as cv
 
 from pull_pieces import pull_pieces
 from corners import detect_corners
-from match import solve
 from component import PuzzlePiece, Point
 from utilities.draw_puzzle_piece import print_whole_puzzle_image
+from utilities import Solver
+from match import Match
+from greedy import Greedy
+
 
 def main():
     ap = argparse.ArgumentParser(description="Simulate puzzle assembly process")
     ap.add_argument("--image", required=True, help="path to input image")
     ap.add_argument("--outdir", default="../output", help="folder to save results")
-    ap.add_argument("--variant", required=False, default="fast",
-                    help="variant of algorithm to be used (e.i. fast or greedy)")
+    ap.add_argument(
+        "--variant",
+        required=False,
+        default="fast",
+        help="variant of algorithm to be used (e.i. fast or greedy)",
+    )
     args = ap.parse_args()
 
     ensure_out_dir(args.outdir)
@@ -22,7 +30,7 @@ def main():
     img = cv.imread(args.image)
     if img is None:
         raise SystemExit(f"Could not read image: {args.image}")
-    
+
     # Step 1: Isolate puzzle pieces from the image
     piece_images = pull_pieces(img, args.outdir)
 
@@ -38,12 +46,22 @@ def main():
         puzzle_pieces[i] = piece
         print(f"Created PuzzlePiece from {filename}: {piece}")
 
-    # Step 4: Solve the puzzle 
-    solve(puzzle_pieces)
+    # Step 4: Solve the puzzle
+    solver: Solver
+
+    if args.variant == "fast":
+        solver = Match()
+    elif args.variant == "greedy":
+        solver = Greedy()
+    else:
+        solver = Match()
+
+    solver.solve(puzzle_pieces)
 
     solved = print_whole_puzzle_image(puzzle_pieces)
     solved.show()
-    
+
+
 def ensure_out_dir(outdir: str) -> None:
     """Ensure the output directory exists."""
     os.makedirs(outdir, exist_ok=True)
@@ -55,7 +73,8 @@ def ensure_out_dir(outdir: str) -> None:
             if os.path.isfile(file_path) or os.path.islink(file_path):
                 os.unlink(file_path)
         except Exception as e:
-            print(f'Failed to delete {file_path}. Reason: {e}')
+            print(f"Failed to delete {file_path}. Reason: {e}")
+
 
 if __name__ == "__main__":
     main()
