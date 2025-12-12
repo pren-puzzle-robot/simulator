@@ -20,8 +20,7 @@ def main() -> None:
     # cv2.imshow(f"{1}. Piece", img)
     # cv2.waitKey(0)
     # cv2.destroyAllWindows()
-
-    # print([x.get_indices for x in PUZZLE[1].outer_edges])
+    # print([x.get_indices for x in PUZZLE[1].s])
     # print(PUZZLE[1].get_limits())
 
     result = solve_greedy_corner_matching()
