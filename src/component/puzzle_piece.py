@@ -3,9 +3,7 @@ from typing import Iterable, List
 
 from .point import Point
 from .polygon import Polygon
-from .edge import Edge
 from .outer_edge import OuterEdge, PieceType
-
 
 
 class PuzzlePiece:
@@ -40,6 +38,7 @@ class PuzzlePiece:
 
         # Re-analyze after rotation so indices and outer_edges match
         from utilities import analyze_polygon
+
         final_analysis = analyze_polygon(self._polygon)
         self._possible_outer_edges = final_analysis
         self._outer_edge = final_analysis[0]
@@ -86,13 +85,33 @@ class PuzzlePiece:
         next_index: int = (index + 1 * inverted) % length
 
         return (points[prev_index], points[index], points[next_index])
+    
+    def get_possible_limits(self) -> List[tuple[int, int]]:
+        """
+        Get the lowest and the highest index of all possible `OuterEdge`s
+        detected for this piece.
+        """
+        results: List[tuple[int, int]] = []
+        for outer_edge in self.possible_outer_edges:
+            limits = self._get_limits(outer_edge)
+            results.append(limits)
+        return results
 
-    def get_limits(self) -> tuple[int, int]:
+    def _get_limits(self, outer_edge: OuterEdge | None = None) -> tuple[int, int]:
         """
-        Get the lowest and the highest index of the polygon that are at\n
-        the edge of an outer edge.
+        Get the lowest and the highest index of the given `OuterEdge`\n
+        In case that none is provided the method will simply take the\n
+        first in the list of possible ones.\n
         """
-        data: list[tuple[int, int]] = [edge.get_indices for edge in self.outer_edge.edges]
+        if outer_edge is None:
+            if len(self.possible_outer_edges) > 0:
+                outer_edge = self.possible_outer_edges[0]
+            else:
+                raise RuntimeError("No outer edges detected for this piece")
+
+        data: list[tuple[int, int]] = [
+            edge.get_indices for edge in self.outer_edge.edges
+        ]
         length: int = len(self.polygon.vertices)
 
         vertices: set[int] = {v for u, v in data for v in (u, v)}
@@ -127,7 +146,7 @@ class PuzzlePiece:
             result = (end, start)
 
         return result
-    
+
     def rotate(self, angle_rad: float) -> None:
         """Rotate the puzzle piece polygon by the given angle in radians."""
         self._rotation += angle_rad
@@ -141,11 +160,13 @@ class PuzzlePiece:
         dx = to_point.x - from_point.x
         dy = to_point.y - from_point.y
 
-        self._translation= (self._translation[0] + dx, self._translation[1] + dy)
+        self._translation = (self._translation[0] + dx, self._translation[1] + dy)
         print("Translation:", self._translation)
 
         self._polygon.translate(dx, dy)
-        self._possible_outer_edges = [ edge.translated(dx, dy) for edge in self._possible_outer_edges ]
+        self._possible_outer_edges = [
+            edge.translated(dx, dy) for edge in self._possible_outer_edges
+        ]
         self._outer_edge = self.outer_edge.translated(dx, dy)
 
     @property
@@ -160,7 +181,7 @@ class PuzzlePiece:
     def possible_outer_edges(self) -> List[OuterEdge]:
         """Detected outer edges of this piece."""
         return self._possible_outer_edges
-    
+
     @property
     def outer_edge(self) -> OuterEdge:
         """Outer edge of this piece."""
@@ -173,12 +194,12 @@ class PuzzlePiece:
     @property
     def is_edge(self) -> bool:
         return self.outer_edge.type == PieceType.EDGE
-    
+
     @property
     def rotation(self) -> float:
         """Get the current rotation of the puzzle piece in radians."""
         return self._rotation
-    
+
     @property
     def translation(self) -> tuple[float, float]:
         """Get the current translation (dx, dy) of the puzzle piece."""

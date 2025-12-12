@@ -13,6 +13,8 @@ def main():
     ap = argparse.ArgumentParser(description="Simulate puzzle assembly process")
     ap.add_argument("--image", required=True, help="path to input image")
     ap.add_argument("--outdir", default="../output", help="folder to save results")
+    ap.add_argument("--variant", required=False, default="fast",
+                    help="variant of algorithm to be used (e.i. fast or greedy)")
     args = ap.parse_args()
 
     ensure_out_dir(args.outdir)

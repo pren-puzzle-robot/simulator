@@ -43,7 +43,7 @@ def main() -> None:
     first_piece_id, first_edge = result.pop(0)
     first_piece = PUZZLE[first_piece_id]
     rotate_first_corner(first_piece)
-    first_piece.translate(first_piece.outer_edges[-1].p1, Point(0, 0))
+    first_piece.translate(first_piece.outer_edge.edges[-1].p1, Point(0, 0))
 
     previous_piece = first_piece
     previous_edge = first_edge
@@ -111,7 +111,7 @@ def rotate_first_corner(puzzle_piece: PuzzlePiece) -> None:
     """Rotates the first corner piece to point down horizontally."""
 
     # Rotates the polygon so that the last outer edge is at the bottom
-    bottom_edge = puzzle_piece.outer_edges[-1]
+    bottom_edge = puzzle_piece.outer_edge.edges[-1]
     # Calculate the angle of the bottom edge
     dx = bottom_edge.p2.x - bottom_edge.p1.x
     dy = bottom_edge.p2.y - bottom_edge.p1.y
@@ -119,7 +119,6 @@ def rotate_first_corner(puzzle_piece: PuzzlePiece) -> None:
     rotation_needed = -angle + math.pi / 2  # Rotate to point downwards
     # Rotate all points in the polygon
     puzzle_piece.rotate(rotation_needed)
-    pass
 
 
 def solve_greedy_corner_matching() -> list[tuple[int, tuple[int, int]]] | None:
@@ -128,49 +127,72 @@ def solve_greedy_corner_matching() -> list[tuple[int, tuple[int, int]]] | None:
     return _pick_first_puzzle_piece()
 
 
-def _pick_first_puzzle_piece() -> list[tuple[int, tuple[int, int]]] | None:
+def _pick_first_puzzle_piece() -> list[tuple[int, tuple[int, int]]]:
     # get the first corner piece
     index: int = next(i for i, p in PUZZLE.items() if p.is_corner)
     direction: bool = True
-    origin: tuple[int, bool] = (index, direction)
     remaining_edges: list[int] = [k for k in PUZZLE if k != index]
 
-    return _find_next_matching_puzzle_piece(origin, remaining_edges)
+    result: list[tuple[int, tuple[int, int]]] = []
+
+    for limit in PUZZLE[index].get_possible_limits():
+        origin_edge: tuple[int, bool, tuple[int, int]] = (index, direction, limit)
+        temp_result = _find_next_matching_puzzle_piece(origin_edge, remaining_edges)
+
+        if temp_result is not None:
+            result = temp_result
+            break
+
+    return result
+
+
+def _generate_all_possible_edges(
+    puzzle_pieces: list[int],
+) -> list[tuple[int, bool, tuple[int, int]]]:
+    pieces_n_directions: list[tuple[int, bool]] = [(n, True) for n in puzzle_pieces] + [
+        (n, False) for n in puzzle_pieces
+    ]
+
+    pieces_n_directions_n_limits: list[tuple[int, bool, tuple[int, int]]] = [
+        (piece_id, direction, limit)
+        for (piece_id, direction) in pieces_n_directions
+        for limit in PUZZLE[piece_id].get_possible_limits()
+    ]
+
+    return pieces_n_directions_n_limits
 
 
 def _find_next_matching_puzzle_piece(
-    origin: tuple[int, bool], remaining: list[int]
+    origin: tuple[int, bool, tuple[int, int]], remaining: list[int]
 ) -> list[tuple[int, tuple[int, int]]] | None:
-    # flip-flopping list of remaining matches
-    prev_remaining: list[tuple[int, bool]] = [(n, True) for n in remaining] + [
-        (n, False) for n in remaining
-    ]
-    curr_remaining: list[tuple[int, bool]] = prev_remaining.copy()
+    # remaining matches generated from the remaining puzzle pieces
+    prev_remaining: list[tuple[int, bool, tuple[int, int]]] = (
+        _generate_all_possible_edges(remaining)
+    )
+    curr_remaining: list[tuple[int, bool, tuple[int, int]]] = prev_remaining.copy()
 
     # setup values for the original puzzlepiece
     origin_piece = PUZZLE[origin[0]]
     o_direction = origin[1]
     o_length: int = len(origin_piece.polygon.vertices)
-    o_limits: tuple[int, int] = origin_piece.get_limits()
-    o_start: int = o_limits[0] if o_direction else o_limits[1]
+    o_limit: tuple[int, int] = origin[2]
+    o_start: int = o_limit[0] if o_direction else o_limit[1]
     o_dir: int = 1 if o_direction else -1
 
     # default solution to be overritten
     this_edge: tuple[int, int] = (o_start, o_start)
-    next_edges: list[tuple[int, bool]] = []
+    next_edges: list[tuple[int, bool, tuple[int, int]]] = []
 
     for i in range(0, o_length):
         # current points and edges for origin
         o_index = o_start + i * o_dir
         o_points = origin_piece.get_triplet(o_index, o_direction)
-        for m_piece, m_direction in prev_remaining:
+        for m_piece, m_direction, m_limit in prev_remaining:
             # current points and edges for a potential match
-            match = PUZZLE[m_piece]
-            m_limits = match.get_limits()
-            m_start = m_limits[0] if m_direction else m_limits[1]
+            m_start = m_limit[0] if m_direction else m_limit[1]
             m_dir = 1 if m_direction else -1
             m_index = m_start + i * m_dir
-            m_points = match.get_triplet(m_index, m_direction)
+            m_points = PUZZLE[m_piece].get_triplet(m_index, m_direction)
 
             # result of the matching
             matching = (
@@ -181,7 +203,7 @@ def _find_next_matching_puzzle_piece(
 
             # remove from pool if it does not fit
             if not matching:
-                curr_remaining.remove((m_piece, m_direction))
+                curr_remaining.remove((m_piece, m_direction, m_limit))
 
         if len(curr_remaining) == 0:
             # in this round the remaining pieces droped out
@@ -204,8 +226,8 @@ def _find_next_matching_puzzle_piece(
     if (
         len(next_edges) > 1
     ):  # multiple solutions -> test each one and return the first that went all the way
-        for next_piece, next_dir in next_edges:
-            next_edge = (next_piece, not next_dir)
+        for next_piece, next_dir, next_limit in next_edges:
+            next_edge = (next_piece, not next_dir, next_limit)
             next_remaining = remaining.copy()
             next_remaining.remove(next_piece)
             temp_result = _find_next_matching_puzzle_piece(next_edge, next_remaining)
@@ -215,9 +237,7 @@ def _find_next_matching_puzzle_piece(
 
                 edge_length: int = abs(this_edge[1] - this_edge[0]) + 1
 
-                next_puzzle_piece: PuzzlePiece = PUZZLE[next_piece]
-                next_limits: tuple[int, int] = next_puzzle_piece.get_limits()
-                next_start: int = next_limits[0] if next_dir else next_limits[1]
+                next_start: int = next_limit[0] if next_dir else next_limit[1]
                 next_direction: int = 1 if next_dir else -1
                 next_last: int = next_start + (edge_length - 1) * next_direction
 
@@ -231,8 +251,8 @@ def _find_next_matching_puzzle_piece(
                 return temp_result
 
     elif len(next_edges) == 1:  # one possible next piece, easy solution
-        next_piece, next_dir = next_edges.pop()
-        next_edge = (next_piece, not next_dir)
+        next_piece, next_dir, next_limit = next_edges.pop()
+        next_edge = (next_piece, not next_dir, next_limit)
         next_remaining = remaining.copy()
         next_remaining.remove(next_piece)
 
@@ -240,9 +260,7 @@ def _find_next_matching_puzzle_piece(
 
         edge_length = abs(this_edge[1] - this_edge[0]) + 1
 
-        next_puzzle_piece = PUZZLE[next_piece]
-        next_limits = next_puzzle_piece.get_limits()
-        next_start = next_limits[0] if next_dir else next_limits[1]
+        next_start = next_limit[0] if next_dir else next_limit[1]
         next_direction = 1 if next_dir else -1
         next_last = next_start + (edge_length - 1) * next_direction
 

@@ -3,11 +3,14 @@
 
 __copyright__ = "Copyright (c) 2025 HSLU PREN Team 13, HS25. All rights reserved."
 
+
 # simplifies access to these classes
 from .puzzle_piece_loader import PuzzlePieceLoader
 from .plot_computation import compute_offset
 from .draw_puzzle_piece import print_whole_puzzle_image
 from .polygon_analysis import analyze_polygon
+
+from .solver import Solver
 
 def load_pieces():
     """
@@ -17,5 +20,4 @@ def load_pieces():
     """
     return PuzzlePieceLoader.load_pieces()
 
-
-__all__ = ["load_pieces", "compute_offset", "print_whole_puzzle_image", "analyze_polygon"]
+__all__ = ["load_pieces", "compute_offset", "print_whole_puzzle_image", "analyze_polygon", "Solver"]
