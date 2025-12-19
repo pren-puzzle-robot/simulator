@@ -21,20 +21,6 @@ The simulator follows a structured processing pipeline:
 3. Geometric domain modeling (`PuzzlePiece`, `Polygon`, `Point`, `OuterEdge`)
 4. Puzzle assembly using interchangeable solver strategies
 
-## Project Structure
-
-  .
- ├── src/
- │   ├── simulator.py            # Entry point / orchestration
- │   ├── pull_pieces.py          # Image preprocessing & segmentation
- │   ├── corners.py              # Corner detection
- │   ├── match.py                # Geometric matching solver
- │   ├── greedy.py               # Greedy solver
- │   ├── component/              # Domain model (PuzzlePiece, Polygon, …)
- │   └── utilities/              # Solver interface & visualization
- ├── sample_image/               # Sample input images
- └── output/                     # Debug images and result outputs
-
 ## Requirements
 
 - Python 3.9 or newer
@@ -43,13 +29,17 @@ The simulator follows a structured processing pipeline:
 
 Installation example:
 
-pip install opencv-python numpy
+```powershell
+pip install opencv-python numpy pillow
+```
 
 ## Usage
 
 Run the simulator from the project root:
 
+```powershell
 python src/simulator.py --image sample_image/example.png --variant match
+```
 
 ### Parameters
 
