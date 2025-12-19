@@ -16,7 +16,7 @@ from greedy import Greedy
 def main():
     ap = argparse.ArgumentParser(description="Simulate puzzle assembly process")
     ap.add_argument("--image", required=True, help="path to input image")
-    ap.add_argument("--outdir", default="../output", help="folder to save results")
+    ap.add_argument("--outdir", default="./output", help="folder to save results")
     ap.add_argument(
         "--variant",
         required=False,
