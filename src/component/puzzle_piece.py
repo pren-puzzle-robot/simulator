@@ -92,7 +92,9 @@ class PuzzlePiece:
         detected for this piece.
         """
         results: List[tuple[int, int]] = []
-        for outer_edge in self.possible_outer_edges:
+        possible_outer_edges: List[OuterEdge] = self.possible_outer_edges
+
+        for outer_edge in possible_outer_edges:
             limits = self._get_limits(outer_edge)
             results.append(limits)
         return results
@@ -110,7 +112,7 @@ class PuzzlePiece:
                 raise RuntimeError("No outer edges detected for this piece")
 
         data: list[tuple[int, int]] = [
-            edge.get_indices for edge in self.outer_edge.edges
+            edge.get_indices for edge in outer_edge.edges
         ]
         length: int = len(self.polygon.vertices)
 

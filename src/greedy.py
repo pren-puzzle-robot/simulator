@@ -93,8 +93,11 @@ class Greedy(Solver):
         remaining_edges: list[int] = [k for k in self.puzzle if k != index]
 
         result: list[tuple[int, tuple[int, int]]] = []
+        limits: list[tuple[int, int]] = self.puzzle[index].get_possible_limits()
 
-        for limit in self.puzzle[index].get_possible_limits():
+        print(limits)
+
+        for limit in limits:
             origin_edge: tuple[int, bool, tuple[int, int]] = (index, direction, limit)
             temp_result = self._find_next_matching_puzzle_piece(
                 origin_edge, remaining_edges
@@ -344,3 +347,9 @@ class Greedy(Solver):
         # radiant angle between the two vectors
         angle_rad = math.atan2(cross, dot)
         return angle_rad
+
+if __name__ == "__main__":
+    # simple test code
+
+    pieces = load_pieces()
+    Greedy.solve(pieces)
