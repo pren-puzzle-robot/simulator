@@ -307,7 +307,13 @@ class Greedy(Solver):
         o_angle = cls._angle_at_this(o_prev, o_this, o_next)
         m_angle = cls._angle_at_this(m_prev, m_this, m_next)
 
-        return abs(o_angle - m_angle) <= math.radians(cls.ERROR_MARCHING_ANGLE / 2.0)
+        return abs(cls._angle_diff(o_angle, m_angle)) <= math.radians(
+            cls.ERROR_MARCHING_ANGLE / 2.0
+        )
+
+    @staticmethod
+    def _angle_diff(a: float, b: float) -> float:
+        return (a - b + math.pi) % (2 * math.pi) - math.pi
 
     @staticmethod
     def _angle_at_this(prev: Point, this: Point, follow: Point) -> float:
