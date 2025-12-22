@@ -55,8 +55,6 @@ class PuzzlePieceLoader:
 
         raise FileNotFoundError
 
-    JSON_PATH_TO_CORNERS: Path = _setup_corner_data_path(ROOT_LOC, FOLDERNAME, FILENAME)
-
     # funcitionality
     @classmethod
     def load_pieces(cls) -> dict[int, PuzzlePiece]:
@@ -65,7 +63,10 @@ class PuzzlePieceLoader:
         found in output and adds their value as a key to\n
         find them more easily.
         """
-        return cls._load_corner_pieces(cls.JSON_PATH_TO_CORNERS)
+        JSON_PATH_TO_CORNERS: Path = cls._setup_corner_data_path(
+            cls.ROOT_LOC, cls.FOLDERNAME, cls.FILENAME
+        )
+        return cls._load_corner_pieces(JSON_PATH_TO_CORNERS)
 
     @classmethod
     def _points_from_list(cls, raw_points: List[List[float]]) -> List[Point]:

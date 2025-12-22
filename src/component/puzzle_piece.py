@@ -84,7 +84,9 @@ class PuzzlePiece:
         prev_index: int = (index - 1 * inverted) % length
         next_index: int = (index + 1 * inverted) % length
 
-        return (points[prev_index], points[index], points[next_index])
+        norm_index = index % length
+
+        return (points[prev_index], points[norm_index], points[next_index])
     
     def get_possible_limits(self) -> List[tuple[int, int]]:
         """
@@ -118,36 +120,37 @@ class PuzzlePiece:
 
         vertices: set[int] = {v for u, v in data for v in (u, v)}
 
+        if not vertices:
+            raise RuntimeError("No vertices found for outer edge")
+
+        return self._get_start_end_indices(length, vertices)
+
+    @staticmethod
+    def _get_start_end_indices(length: int, vertices: set[int]) -> tuple[int, int]:
+        if length <= 0:
+            raise ValueError("Length must be positive")
+
         points_sorted = sorted(vertices)
 
-        def cyclic_distance(a: int, b: int, n: int) -> int:
-            """shortest distance in cyclic polygon"""
-            d = (b - a) % n
-            return d
+        if len(points_sorted) == 1:
+            v = points_sorted[0]
+            return (v, v)
 
-        best_start = None
-        best_len = None
+        m = len(points_sorted)
+        gaps: list[int] = []
+        for i in range(m):
+            a = points_sorted[i]
+            b = points_sorted[(i + 1) % m]
+            gap = (b - a) % length
+            gaps.append(gap)
 
-        # try every starting index on the set
-        for s in points_sorted:
-            # distance to all the points
-            dists = [cyclic_distance(s, v, length) for v in vertices]
-            max_dist = max(dists)  # how far does it go
-            if best_len is None or max_dist < best_len:
-                best_len = max_dist
-                best_start = s
+        max_gap_idx = max(range(m), key=lambda i: gaps[i])
 
-        if best_start is None or best_len is None:
-            raise RuntimeError("Internal error: no start point selected")
+        start = points_sorted[(max_gap_idx + 1) % m]
+        end = points_sorted[max_gap_idx]
 
-        start = best_start
-        end = (best_start + best_len) % length
+        return (start, end)
 
-        result = (start, end)
-        if start > end:
-            result = (end, start)
-
-        return result
 
     def rotate(self, angle_rad: float) -> None:
         """Rotate the puzzle piece polygon by the given angle in radians."""

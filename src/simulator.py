@@ -52,7 +52,7 @@ def main():
     if args.variant == "fast":
         solver = Match()
     elif args.variant == "greedy":
-        solver = Greedy()
+        solver = Greedy(puzzle_pieces)
     else:
         solver = Match()
 

@@ -5,7 +5,8 @@ from __future__ import annotations
 import math
 
 from component import PuzzlePiece, Point
-from utilities import print_whole_puzzle_image, load_pieces, Solver
+from utilities import print_whole_puzzle_image, Solver
+from utilities.puzzle_piece_loader import PuzzlePieceLoader
 
 
 class Greedy(Solver):
@@ -17,10 +18,7 @@ class Greedy(Solver):
 
     _puzzle: dict[int, PuzzlePiece]
 
-    def __init__(self, puzzle: dict[int, PuzzlePiece] | None = None) -> None:
-        if puzzle is None:
-            puzzle = load_pieces()
-
+    def __init__(self, puzzle: dict[int, PuzzlePiece]) -> None:
         self._puzzle = puzzle
 
     @property
@@ -162,6 +160,10 @@ class Greedy(Solver):
     def _find_next_matching_puzzle_piece(
         self, origin: tuple[int, bool, tuple[int, int]], remaining: list[int]
     ) -> list[tuple[int, tuple[int, int]]] | None:
+        # trivial case: no remaining pieces
+        if remaining == []:
+            return []
+
         # remaining matches generated from the remaining puzzle pieces
         prev_remaining: list[tuple[int, bool, tuple[int, int]]] = (
             self._generate_all_possible_edges(remaining)
@@ -173,7 +175,7 @@ class Greedy(Solver):
         o_direction = origin[1]
         o_length: int = len(origin_piece.polygon.vertices)
         o_limit: tuple[int, int] = origin[2]
-        o_start: int = o_limit[0] if o_direction else o_limit[1]
+        o_start: int = o_limit[1] if o_direction else o_limit[0]
         o_dir: int = 1 if o_direction else -1
 
         # default solution to be overritten
@@ -186,7 +188,7 @@ class Greedy(Solver):
             o_points = origin_piece.get_triplet(o_index, o_direction)
             for m_piece, m_direction, m_limit in prev_remaining:
                 # current points and edges for a potential match
-                m_start = m_limit[0] if m_direction else m_limit[1]
+                m_start = m_limit[1] if m_direction else m_limit[0]
                 m_dir = 1 if m_direction else -1
                 m_index = m_start + i * m_dir
                 m_points = self.puzzle[m_piece].get_triplet(m_index, m_direction)
@@ -204,7 +206,7 @@ class Greedy(Solver):
 
             if len(curr_remaining) == 0:
                 # in this round the remaining pieces droped out
-                o_last = o_start + (i - 1) * o_dir
+                o_last = (o_start + (i * o_dir)) % o_length
                 this_edge = (o_start, o_last)
                 next_edges = prev_remaining
                 break
@@ -220,66 +222,48 @@ class Greedy(Solver):
         ):  # could not complete a single loop
             return None
 
-        if (
-            len(next_edges) > 1
-        ):  # multiple solutions -> test each one and return the first that went all the way
-            for next_piece, next_dir, next_limit in next_edges:
-                next_edge = (next_piece, not next_dir, next_limit)
-                next_remaining = remaining.copy()
-                next_remaining.remove(next_piece)
-                temp_result = self._find_next_matching_puzzle_piece(
-                    next_edge, next_remaining
-                )
+        if (this_edge[1] - this_edge[0]) % o_length <= 1:
+            return None  # could not match at least two segments
 
-                if temp_result is not None:
-                    this_match: tuple[int, tuple[int, int]] = (origin[0], this_edge)
-
-                    edge_length: int = abs(this_edge[1] - this_edge[0]) + 1
-
-                    next_start: int = next_limit[0] if next_dir else next_limit[1]
-                    next_direction: int = 1 if next_dir else -1
-                    next_last: int = next_start + (edge_length - 1) * next_direction
-
-                    next_match: tuple[int, tuple[int, int]] = (
-                        next_piece,
-                        (next_start, next_last),
-                    )
-
-                    temp_result.insert(0, next_match)
-                    temp_result.insert(0, this_match)
-                    return temp_result
-
-        elif len(next_edges) == 1:  # one possible next piece, easy solution
-            next_piece, next_dir, next_limit = next_edges.pop()
+        for next_piece, next_dir, next_limit in next_edges:
             next_edge = (next_piece, not next_dir, next_limit)
             next_remaining = remaining.copy()
             next_remaining.remove(next_piece)
-
-            this_match = (origin[0], this_edge)
-
-            edge_length = abs(this_edge[1] - this_edge[0]) + 1
-
-            next_start = next_limit[0] if next_dir else next_limit[1]
-            next_direction = 1 if next_dir else -1
-            next_last = next_start + (edge_length - 1) * next_direction
-
-            next_match = (next_piece, (next_start, next_last))
-
-            if len(next_remaining) == 0:  # we succeeded
-                return [this_match, next_match]
-
             temp_result = self._find_next_matching_puzzle_piece(
                 next_edge, next_remaining
             )
 
             if temp_result is not None:
+                this_match: tuple[int, tuple[int, int]] = (origin[0], this_edge)
+
+                next_length: int = len(self.puzzle[next_piece].polygon.vertices)
+                edge_length: int = (this_edge[1] - this_edge[0]) % o_length
+
+                next_start: int = next_limit[1] if next_dir else next_limit[0]
+                next_direction: int = 1 if next_dir else -1
+                next_last: int = (
+                    next_start + (edge_length * next_direction)
+                ) % next_length
+
+                next_match: tuple[int, tuple[int, int]] = (
+                    next_piece,
+                    (next_start, next_last),
+                )
+
                 temp_result.insert(0, next_match)
                 temp_result.insert(0, this_match)
                 return temp_result
 
-            return None
-
         return None
+
+    @staticmethod
+    def _same_remaining_puzzle_piece(
+        remaining: list[tuple[int, bool, tuple[int, int]]],
+    ) -> bool:
+        if not remaining:
+            raise ValueError("Remaining list is empty")
+        reference = remaining[0][0]
+        return all(piece == reference for piece, _, _ in remaining)
 
     @classmethod
     def _first_segment_matches(
@@ -348,8 +332,9 @@ class Greedy(Solver):
         angle_rad = math.atan2(cross, dot)
         return angle_rad
 
+
 if __name__ == "__main__":
     # simple test code
-
-    pieces = load_pieces()
-    Greedy.solve(pieces)
+    PUZZLE: dict[int, PuzzlePiece] = PuzzlePieceLoader.load_pieces()
+    Greedy.solve(PUZZLE)
+    print_whole_puzzle_image(PUZZLE)
